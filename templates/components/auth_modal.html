@@ -7,42 +7,44 @@
 <!-- LOGIN -->
 
 <div id="loginForm">
+    <h2>🌿 Welcome Back</h2>
+    <p>Login to continue using PhytoAI</p>
 
-<h2>🌿 Welcome Back</h2>
-<p>Login to continue using PhytoAI</p>
+    <div class="form-group">
+        <input id="loginEmail" type="email" placeholder="Email" required>
+    </div>
+    <div class="form-group">
+        <input id="loginPassword" type="password" placeholder="Password" required>
+    </div>
 
-<input id="loginEmail" type="email" placeholder="Email">
+    <button id="loginSubmit" class="auth-btn">Login</button>
 
-<input id="loginPassword" type="password" placeholder="Password">
-
-<button id="loginSubmit">Login</button>
-
-<p>
-Don't have an account?
-<span id="showSignup">Sign up</span>
-</p>
-
+    <p class="auth-switch">
+        Don't have an account? <span id="showSignup">Sign up</span>
+    </p>
 </div>
 
 <!-- SIGNUP -->
 
 <div id="signupForm" style="display:none;">
+    <h2>🌱 Join PhytoAI</h2>
+    <p>Create your account to get started !!</p>
 
-<h2>🌱 Join PhytoAI</h2>
+    <div class="form-group">
+        <input id="signupName" type="text" placeholder="Full Name" required>
+    </div>
+    <div class="form-group">
+        <input id="signupEmail" type="email" placeholder="Email" required>
+    </div>
+    <div class="form-group">
+        <input id="signupPassword" type="password" placeholder="Password" required>
+    </div>
 
-<input id="signupName" type="text" placeholder="Full Name">
+    <button id="signupSubmit" class="auth-btn">Create Account</button>
 
-<input id="signupEmail" type="email" placeholder="Email">
-
-<input id="signupPassword" type="password" placeholder="Password">
-
-<button id="signupSubmit">Create Account</button>
-
-<p>
-Already have an account?
-<span id="showLogin">Login</span>
-</p>
-
+    <p class="auth-switch">
+        Already have an account? <span id="showLogin">Login</span>
+    </p>
 </div>
 
 </div>
