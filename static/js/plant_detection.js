@@ -12,119 +12,153 @@ const resultDisease = document.getElementById("resultDisease");
 const resultConfidenceText = document.getElementById("resultConfidenceText");
 const confidenceBar = document.getElementById("confidenceBar");
 
-let selectedFile=null;
+let selectedFile = null;
 
+/* ── Helpers ──────────────────────────────────────────────────────────── */
 
-/* FILE SELECT */
-
-function handleFileSelect(file){
-
-if(file && file.type.startsWith("image/")){
-
-selectedFile=file;
-
-previewImage.src=URL.createObjectURL(file);
-previewImage.style.display="block";
-
-resetBtn.style.display="block";
-resultBox.style.display="none";
-
+function showLoginPrompt() {
+  alert("Please login to upload and analyze plant images.");
+  const loginModal = document.getElementById("authModal");
+  const loginForm = document.getElementById("loginForm");
+  const signupForm = document.getElementById("signupForm");
+  if (loginModal) {
+    loginModal.style.display = "flex";
+    if (loginForm) loginForm.style.display = "block";
+    if (signupForm) signupForm.style.display = "none";
+  }
 }
 
+async function isLoggedIn() {
+  const { data: { session } } = await window.supabaseClient.auth.getSession();
+  return !!session;
 }
 
-
-/* CLICK UPLOAD */
-
-dropZone.addEventListener("click", ()=>{
-imageInput.click();
-});
-
-imageInput.addEventListener("change",(e)=>{
-handleFileSelect(e.target.files[0]);
-});
-
-
-/* RESET */
-
-resetBtn.addEventListener("click",(e)=>{
-
-e.stopPropagation();
-
-selectedFile=null;
-imageInput.value="";
-
-previewImage.src="";
-previewImage.style.display="none";
-
-resetBtn.style.display="none";
-resultBox.style.display="none";
-
-});
-
-
-/* DETECT */
-
-detectBtn.addEventListener("click", async ()=>{
-
-if(!selectedFile){
-alert("Upload an image first");
-return;
+function handleFileSelect(file) {
+  if (file && file.type.startsWith("image/")) {
+    selectedFile = file;
+    previewImage.src = URL.createObjectURL(file);
+    previewImage.style.display = "block";
+    resetBtn.style.display = "block";
+    resultBox.style.display = "none";
+  } else if (file) {
+    alert("Please upload a valid image file (JPG, PNG, etc.)");
+  }
 }
 
-detectBtn.disabled=true;
-loaderContainer.style.display="block";
+/* ── File input change (triggered programmatically) ───────────────────── */
+imageInput.addEventListener("change", (e) => {
+  handleFileSelect(e.target.files[0]);
+});
 
-const formData=new FormData();
-formData.append("image",selectedFile);
+/* ── Drop zone CLICK ──────────────────────────────────────────────────────
+   The <input type="file"> is INSIDE the drop zone div, so clicking the
+   input would bubble up and re-trigger the dropZone click → infinite loop.
+   Fix: only open the dialog when the click target is NOT the input itself,
+   and stop propagation on the input so it never bubbles to dropZone.
+*/
+imageInput.addEventListener("click", (e) => {
+  e.stopPropagation(); // prevent bubbling up to dropZone
+});
 
-try{
+dropZone.addEventListener("click", async (e) => {
+  // If user clicked the reset button (inside the upload area) ignore
+  if (e.target.closest("#resetBtn")) return;
 
-const { data: { session } } = await window.supabaseClient.auth.getSession();
-const token = session ? session.access_token : null;
-
-if (!token) {
-    loaderContainer.style.display="none";
-    detectBtn.disabled=false;
-    alert("Please login first");
+  if (!(await isLoggedIn())) {
+    showLoginPrompt();
     return;
-}
+  }
 
-const response = await fetch("/api/predict",{
-method:"POST",
-headers:{
-Authorization:`Bearer ${token}`
-},
-body:formData
+  imageInput.click();
 });
 
-const data = await response.json();
+/* ── Drag & Drop ──────────────────────────────────────────────────────── */
+dropZone.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  dropZone.classList.add("drag-over");
+});
 
-loaderContainer.style.display="none";
-detectBtn.disabled=false;
+dropZone.addEventListener("dragleave", (e) => {
+  e.preventDefault();
+  dropZone.classList.remove("drag-over");
+});
 
-if(response.ok){
+dropZone.addEventListener("drop", async (e) => {
+  e.preventDefault();
+  dropZone.classList.remove("drag-over");
 
-resultBox.style.display="block";
+  if (!(await isLoggedIn())) {
+    showLoginPrompt();
+    return;
+  }
 
-resultDisease.innerText=`Detected: ${data.disease}`;
-resultConfidenceText.innerText=`Confidence: ${data.confidence_percentage}`;
+  const files = e.dataTransfer.files;
+  if (files.length > 0) {
+    handleFileSelect(files[0]);
+  }
+});
 
-confidenceBar.style.width=`${data.confidence*100}%`;
+/* ── Reset ────────────────────────────────────────────────────────────── */
+resetBtn.addEventListener("click", (e) => {
+  e.stopPropagation(); // don't bubble to dropZone → no dialog
 
-}else{
+  selectedFile = null;
+  imageInput.value = "";
 
-alert(data.error);
+  previewImage.src = "";
+  previewImage.style.display = "none";
 
-}
+  resetBtn.style.display = "none";
+  resultBox.style.display = "none";
+});
 
-}catch(err){
+/* ── Detect ───────────────────────────────────────────────────────────── */
+detectBtn.addEventListener("click", async () => {
+  if (!selectedFile) {
+    alert("Please upload an image first.");
+    return;
+  }
 
-loaderContainer.style.display="none";
-detectBtn.disabled=false;
+  if (!(await isLoggedIn())) {
+    showLoginPrompt();
+    return;
+  }
 
-alert("Prediction error");
+  detectBtn.disabled = true;
+  loaderContainer.style.display = "block";
+  resultBox.style.display = "none";
 
-}
+  const formData = new FormData();
+  formData.append("image", selectedFile);
 
+  try {
+    const { data: { session } } = await window.supabaseClient.auth.getSession();
+    const token = session?.access_token;
+
+    const response = await fetch("/api/predict", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      body: formData
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      resultBox.style.display = "block";
+      resultDisease.innerText = `Detected: ${data.disease}`;
+      resultConfidenceText.innerText = `Confidence: ${data.confidence_percentage}`;
+      confidenceBar.style.width = `${data.confidence * 100}%`;
+    } else {
+      alert(data.error || "Prediction failed. Please try again.");
+    }
+
+  } catch (err) {
+    console.error("Prediction error:", err);
+    alert("Network error. Please check your connection and try again.");
+  } finally {
+    loaderContainer.style.display = "none";
+    detectBtn.disabled = false;
+  }
 });
