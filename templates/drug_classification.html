@@ -1,72 +1,59 @@
-<!DOCTYPE html>
+<!-- Auth Modal -->
+<div id="authModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:1000; justify-content:center; align-items:center;">
 
-<html lang="en">
+  <div style="background:#fff; border-radius:12px; padding:32px; width:100%; max-width:400px; position:relative; box-shadow: 0 8px 32px rgba(0,0,0,0.2);">
 
-<head>
+    <button id="closeAuth" style="position:absolute; top:12px; right:16px; background:none; border:none; font-size:22px; cursor:pointer; color:#666;">✕</button>
 
-<meta charset="UTF-8">
-<title>Drug Classification | PhytoAI</title>
+    <!-- LOGIN FORM -->
+    <div id="loginForm">
+      <h2 style="margin-bottom:20px; text-align:center;">🌱 Login</h2>
 
-<link rel="stylesheet" href="/static/css/drug_classification.css">
+      <label style="display:block; margin-bottom:4px; font-weight:600;">Email</label>
+      <input id="loginEmail" type="email" placeholder="you@example.com"
+        style="width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; margin-bottom:14px; box-sizing:border-box;">
 
-</head>
+      <label style="display:block; margin-bottom:4px; font-weight:600;">Password</label>
+      <input id="loginPassword" type="password" placeholder="••••••••"
+        style="width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; margin-bottom:20px; box-sizing:border-box;">
 
-<body>
+      <button id="loginSubmit"
+        style="width:100%; padding:12px; background:#22c55e; color:#fff; border:none; border-radius:8px; font-size:16px; font-weight:600; cursor:pointer;">
+        Login
+      </button>
 
-<div class="navbar">
+      <p style="text-align:center; margin-top:16px; color:#555;">
+        Don't have an account?
+        <a href="#" id="showSignup" style="color:#16a34a; font-weight:600; text-decoration:none;">Sign up</a>
+      </p>
+    </div>
 
-<a href="/" class="logo">PhytoAI🪴</a>
+    <!-- SIGNUP FORM -->
+    <div id="signupForm" style="display:none;">
+      <h2 style="margin-bottom:20px; text-align:center;">🌱 Create Account</h2>
 
-<div class="nav-buttons">
+      <label style="display:block; margin-bottom:4px; font-weight:600;">Full Name</label>
+      <input id="signupName" type="text" placeholder="Jane Doe"
+        style="width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; margin-bottom:14px; box-sizing:border-box;">
 
-<button onclick="history.back()">⬅ Back</button>
+      <label style="display:block; margin-bottom:4px; font-weight:600;">Email</label>
+      <input id="signupEmail" type="email" placeholder="you@example.com"
+        style="width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; margin-bottom:14px; box-sizing:border-box;">
 
-<button id="authBtn">Login/Signup🌱</button>
+      <label style="display:block; margin-bottom:4px; font-weight:600;">Password</label>
+      <input id="signupPassword" type="password" placeholder="At least 6 characters"
+        style="width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; margin-bottom:20px; box-sizing:border-box;">
 
+      <button id="signupSubmit"
+        style="width:100%; padding:12px; background:#22c55e; color:#fff; border:none; border-radius:8px; font-size:16px; font-weight:600; cursor:pointer;">
+        Sign Up
+      </button>
+
+      <p style="text-align:center; margin-top:16px; color:#555;">
+        Already have an account?
+        <a href="#" id="showLogin" style="color:#16a34a; font-weight:600; text-decoration:none;">Login</a>
+      </p>
+    </div>
+
+  </div>
 </div>
-
-</div>
-
-<div class="main">
-
-<div class="coming-card">
-
-<h1>💊 Drug Classification</h1>
-
-<p>
-Our AI-powered drug classification system is currently under development.
-</p>
-
-<p class="sub">
-Soon you'll be able to upload chemical structures or compound data.
-</p>
-
-<div class="coming-icon">
-🚧
-</div>
-
-<p class="coming-text">
-Coming Soon
-</p>
-
-<button class="home-btn" onclick="window.location.href='/'">
-Return to Homepage
-</button>
-
-</div>
-
-</div>
-
-<div class="footer">
-© 2026 PhytoAI
-</div>
-
-{% include "components/auth_modal.html" %}
-
-<script src="/static/js/auth.js"></script>
-
-<script src="/static/js/drug_classification.js"></script>
-
-</body>
-
-</html>
