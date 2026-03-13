@@ -1,0 +1,51 @@
+<div class="modal" id="authModal">
+
+<div class="modal-content">
+
+<span class="close" id="closeAuth">×</span>
+
+<!-- LOGIN -->
+
+<div id="loginForm">
+
+<h2>🌿 Welcome Back</h2>
+<p>Login to continue using PhytoAI</p>
+
+<input id="loginEmail" type="email" placeholder="Email">
+
+<input id="loginPassword" type="password" placeholder="Password">
+
+<button id="loginSubmit">Login</button>
+
+<p>
+Don't have an account?
+<span id="showSignup">Sign up</span>
+</p>
+
+</div>
+
+<!-- SIGNUP -->
+
+<div id="signupForm" style="display:none;">
+
+<h2>🌱 Join PhytoAI</h2>
+
+<input id="signupName" type="text" placeholder="Full Name">
+
+<input id="signupEmail" type="email" placeholder="Email">
+
+<input id="signupPassword" type="password" placeholder="Password">
+
+<button id="signupSubmit">Create Account</button>
+
+<p>
+Already have an account?
+<span id="showLogin">Login</span>
+</p>
+
+</div>
+
+</div>
+
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<title>PhytoAI</title>
+
+<link rel="stylesheet" href="/static/css/homepage.css">
+
+</head>
+
+<body>
+
+<div class="navbar">
+
+<a href="/" class="logo">PhytoAI🪴</a>
+
+<div class="nav-buttons">
+<button id="authBtn">Login/Signup🌱</button>
+</div>
+
+</div>
+
+<div class="main">
+
+<h1>🪴Welcome to PhytoAI🪴</h1>
+
+<div class="options">
+
+<div class="option-card" id="plantDetection">
+🌿 Plant Disease Detection
+</div>
+
+<div class="option-card" id="drugClassification">
+💊 Drug Classification
+</div>
+
+</div>
+
+</div>
+
+<div class="footer">
+© 2026 PhytoAI
+</div>
+
+{% include "components/auth_modal.html" %}
+
+<script src="/static/js/auth.js"></script>
+
+<script src="/static/js/homepage.js"></script>
+
+</body>
+
+</html>

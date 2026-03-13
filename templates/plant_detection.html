@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<title>Plant Disease Detection | PhytoAI</title>
+
+<link rel="stylesheet" href="/static/css/homepage.css">
+<link rel="stylesheet" href="/static/css/plant_detection.css">
+
+</head>
+
+<body>
+
+<div class="navbar">
+
+<a href="/" class="logo">PhytoAI🪴</a>
+
+<div class="nav-buttons">
+
+<button onclick="history.back()">← Back</button>
+
+<button id="authBtn">Login/Signup🌱</button>
+
+</div>
+
+</div>
+
+<div class="detect-container">
+
+<h1>Plant Disease Detection 🌿</h1>
+
+<p>Upload a leaf image to detect plant disease</p>
+
+<div class="upload-box" id="uploadBox">
+
+<div class="upload-icon">📁</div>
+
+<div class="upload-text">
+<b>Drag & Drop</b> an image here<br>
+or click to select file
+</div>
+
+<input type="file" id="imageInput" accept="image/*">
+
+<div class="image-preview">
+<img id="previewImage">
+</div>
+
+</div>
+
+<div class="action-buttons">
+
+<button class="reset-btn" id="resetBtn">
+Reset
+</button>
+
+<button class="detect-btn" id="detectBtn">
+Detect Disease
+</button>
+
+</div>
+
+<div class="loader-container" id="loaderContainer">
+
+<div class="loader"></div>
+
+</div>
+
+<div class="result-box" id="resultBox">
+
+<h2>Detection Result</h2>
+
+<div id="resultDisease"></div>
+
+<div class="confidence-container">
+
+<div id="resultConfidenceText"></div>
+
+<div class="progress-bar-bg">
+<div class="progress-bar-fill" id="confidenceBar"></div>
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+{% include "components/auth_modal.html" %}
+
+<script src="/static/js/auth.js"></script>
+
+<script src="/static/js/plant_detection.js"></script>
+
+</body>
+
+</html>
