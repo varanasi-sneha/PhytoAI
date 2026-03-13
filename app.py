@@ -1,8 +1,10 @@
+from backend.utils.supabase_client import supabase
 from flask import Flask, render_template, request, jsonify
 import os
 
 from backend.config import Config
 from backend.routes.prediction_routes import prediction_bp
+from backend.routes.history_routes import history_bp
 
 # Initialize Flask App
 
@@ -16,7 +18,7 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 # Register API blueprints
 
 app.register_blueprint(prediction_bp, url_prefix='/api/predict')
-
+app.register_blueprint(history_bp, url_prefix="/api")
 # ======================
 
 # FRONTEND ROUTES
@@ -36,6 +38,9 @@ def plant_detection():
 @app.route('/drug_classification.html')
 def drug_classification():
     return render_template('drug_classification.html')
+@app.route('/profile')
+def profile():
+    return render_template('profile.html')
 
 # ======================
 
