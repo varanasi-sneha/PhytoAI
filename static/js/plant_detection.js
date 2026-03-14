@@ -14,6 +14,18 @@ const confidenceBar = document.getElementById("confidenceBar");
 
 let selectedFile=null;
 
+// camera code start 
+/* CAMERA ELEMENTS */
+
+const openCameraBtn = document.getElementById("openCameraBtn");
+const cameraVideo = document.getElementById("cameraVideo");
+const captureBtn = document.getElementById("captureBtn");
+const cameraCanvas = document.getElementById("cameraCanvas");
+const cameraBox = document.getElementById("cameraBox");
+
+let cameraStream = null;
+
+// camera code end
 
 /* FILE SELECT */
 
@@ -28,6 +40,9 @@ previewImage.style.display="block";
 
 resetBtn.style.display="block";
 resultBox.style.display="none";
+
+/* HIDE CAMERA OPTION after image upload (both file and camera upload) */
+document.querySelector(".camera-section").style.display="none";
 
 }
 
@@ -59,6 +74,9 @@ previewImage.style.display="none";
 
 resetBtn.style.display="none";
 resultBox.style.display="none";
+
+/* SHOW CAMERA OPTION AGAIN after reset is clicked */
+document.querySelector(".camera-section").style.display="block";
 
 });
 
@@ -126,5 +144,59 @@ detectBtn.disabled=false;
 alert("Prediction error");
 
 }
+
+});
+
+
+/* =========================
+   CAMERA OPEN
+========================= */
+
+openCameraBtn.addEventListener("click", async ()=>{
+
+try{
+
+cameraStream = await navigator.mediaDevices.getUserMedia({video:true});
+
+cameraVideo.srcObject = cameraStream;
+cameraBox.style.display = "block";
+
+}catch(err){
+
+alert("Camera permission denied");
+
+}
+
+});
+
+
+/* =========================
+   CAPTURE PHOTO
+========================= */
+
+captureBtn.addEventListener("click", ()=>{
+
+const context = cameraCanvas.getContext("2d");
+
+cameraCanvas.width = cameraVideo.videoWidth;
+cameraCanvas.height = cameraVideo.videoHeight;
+
+context.drawImage(cameraVideo,0,0);
+
+cameraCanvas.toBlob((blob)=>{
+
+const file = new File([blob],"camera.jpg",{type:"image/jpeg"});
+
+/* Use existing upload system */
+handleFileSelect(file);
+
+/* Stop camera */
+if(cameraStream){
+cameraStream.getTracks().forEach(track=>track.stop());
+}
+
+cameraBox.style.display="none";
+
+});
 
 });
