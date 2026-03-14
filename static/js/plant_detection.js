@@ -12,7 +12,11 @@ const resultDisease = document.getElementById("resultDisease");
 const resultConfidenceText = document.getElementById("resultConfidenceText");
 const confidenceBar = document.getElementById("confidenceBar");
 
-let selectedFile=null;
+let selectedFile = null;
+
+/* ─────────────────────────────────────────
+   CAMERA CODE
+───────────────────────────────────────── */
 
 // camera code start 
 /* CAMERA ELEMENTS */
@@ -27,7 +31,34 @@ let cameraStream = null;
 
 // camera code end
 
-/* FILE SELECT */
+
+/* ─────────────────────────────────────────
+   LOGIN HELPERS
+───────────────────────────────────────── */
+
+function showLoginPrompt() {
+  alert("Please login to upload and analyze plant images.");
+
+  const loginModal = document.getElementById("authModal");
+  const loginForm = document.getElementById("loginForm");
+  const signupForm = document.getElementById("signupForm");
+
+  if (loginModal) {
+    loginModal.style.display = "flex";
+    if (loginForm) loginForm.style.display = "block";
+    if (signupForm) signupForm.style.display = "none";
+  }
+}
+
+async function isLoggedIn() {
+  const { data: { session } } = await window.supabaseClient.auth.getSession();
+  return !!session;
+}
+
+
+/* ─────────────────────────────────────────
+   FILE SELECT
+───────────────────────────────────────── */
 
 function handleFileSelect(file){
 
@@ -41,26 +72,85 @@ previewImage.style.display="block";
 resetBtn.style.display="block";
 resultBox.style.display="none";
 
-/* HIDE CAMERA OPTION after image upload (both file and camera upload) */
+/* HIDE CAMERA OPTION after image upload */
 document.querySelector(".camera-section").style.display="none";
 
-}
+}else if(file){
+
+alert("Please upload a valid image file (JPG, PNG, etc.)");
 
 }
 
+}
 
-/* CLICK UPLOAD */
 
-dropZone.addEventListener("click", ()=>{
-imageInput.click();
-});
+/* ─────────────────────────────────────────
+   FILE INPUT
+───────────────────────────────────────── */
 
 imageInput.addEventListener("change",(e)=>{
 handleFileSelect(e.target.files[0]);
 });
 
+imageInput.addEventListener("click",(e)=>{
+e.stopPropagation();
+});
 
-/* RESET */
+
+/* ─────────────────────────────────────────
+   DROP ZONE CLICK
+───────────────────────────────────────── */
+
+dropZone.addEventListener("click",async (e)=>{
+
+if(e.target.closest("#resetBtn")) return;
+
+if(!(await isLoggedIn())){
+showLoginPrompt();
+return;
+}
+
+imageInput.click();
+
+});
+
+
+/* ─────────────────────────────────────────
+   DRAG & DROP
+───────────────────────────────────────── */
+
+dropZone.addEventListener("dragover",(e)=>{
+e.preventDefault();
+dropZone.classList.add("drag-over");
+});
+
+dropZone.addEventListener("dragleave",(e)=>{
+e.preventDefault();
+dropZone.classList.remove("drag-over");
+});
+
+dropZone.addEventListener("drop",async (e)=>{
+
+e.preventDefault();
+dropZone.classList.remove("drag-over");
+
+if(!(await isLoggedIn())){
+showLoginPrompt();
+return;
+}
+
+const files = e.dataTransfer.files;
+
+if(files.length>0){
+handleFileSelect(files[0]);
+}
+
+});
+
+
+/* ─────────────────────────────────────────
+   RESET
+───────────────────────────────────────── */
 
 resetBtn.addEventListener("click",(e)=>{
 
@@ -75,23 +165,31 @@ previewImage.style.display="none";
 resetBtn.style.display="none";
 resultBox.style.display="none";
 
-/* SHOW CAMERA OPTION AGAIN after reset is clicked */
+/* SHOW CAMERA OPTION AGAIN after reset */
 document.querySelector(".camera-section").style.display="block";
 
 });
 
 
-/* DETECT */
+/* ─────────────────────────────────────────
+   DETECT
+───────────────────────────────────────── */
 
-detectBtn.addEventListener("click", async ()=>{
+detectBtn.addEventListener("click",async ()=>{
 
 if(!selectedFile){
 alert("Upload an image first");
 return;
 }
 
+if(!(await isLoggedIn())){
+showLoginPrompt();
+return;
+}
+
 detectBtn.disabled=true;
 loaderContainer.style.display="block";
+resultBox.style.display="none";
 
 const formData=new FormData();
 formData.append("image",selectedFile);
@@ -99,16 +197,9 @@ formData.append("image",selectedFile);
 try{
 
 const { data: { session } } = await window.supabaseClient.auth.getSession();
-const token = session ? session.access_token : null;
+const token=session?.access_token;
 
-if (!token) {
-    loaderContainer.style.display="none";
-    detectBtn.disabled=false;
-    alert("Please login first");
-    return;
-}
-
-const response = await fetch("/api/predict",{
+const response=await fetch("/api/predict/",{
 method:"POST",
 headers:{
 Authorization:`Bearer ${token}`
@@ -116,32 +207,38 @@ Authorization:`Bearer ${token}`
 body:formData
 });
 
-const data = await response.json();
+const responseText=await response.text();
 
-loaderContainer.style.display="none";
-detectBtn.disabled=false;
+let data;
+
+try{
+data=JSON.parse(responseText);
+}catch{
+data={error:responseText || response.statusText};
+}
 
 if(response.ok){
 
 resultBox.style.display="block";
-
 resultDisease.innerText=`Detected: ${data.disease}`;
 resultConfidenceText.innerText=`Confidence: ${data.confidence_percentage}`;
-
 confidenceBar.style.width=`${data.confidence*100}%`;
 
 }else{
 
-alert(data.error);
+alert(data.error || "Prediction failed. Please try again.");
 
 }
 
 }catch(err){
 
+console.error("Prediction error:",err);
+alert(`Network error. ${err?.message || err}`);
+
+}finally{
+
 loaderContainer.style.display="none";
 detectBtn.disabled=false;
-
-alert("Prediction error");
 
 }
 
@@ -152,14 +249,14 @@ alert("Prediction error");
    CAMERA OPEN
 ========================= */
 
-openCameraBtn.addEventListener("click", async ()=>{
+openCameraBtn.addEventListener("click",async ()=>{
 
 try{
 
-cameraStream = await navigator.mediaDevices.getUserMedia({video:true});
+cameraStream=await navigator.mediaDevices.getUserMedia({video:true});
 
-cameraVideo.srcObject = cameraStream;
-cameraBox.style.display = "block";
+cameraVideo.srcObject=cameraStream;
+cameraBox.style.display="block";
 
 }catch(err){
 
@@ -174,18 +271,18 @@ alert("Camera permission denied");
    CAPTURE PHOTO
 ========================= */
 
-captureBtn.addEventListener("click", ()=>{
+captureBtn.addEventListener("click",()=>{
 
-const context = cameraCanvas.getContext("2d");
+const context=cameraCanvas.getContext("2d");
 
-cameraCanvas.width = cameraVideo.videoWidth;
-cameraCanvas.height = cameraVideo.videoHeight;
+cameraCanvas.width=cameraVideo.videoWidth;
+cameraCanvas.height=cameraVideo.videoHeight;
 
 context.drawImage(cameraVideo,0,0);
 
 cameraCanvas.toBlob((blob)=>{
 
-const file = new File([blob],"camera.jpg",{type:"image/jpeg"});
+const file=new File([blob],"camera.jpg",{type:"image/jpeg"});
 
 /* Use existing upload system */
 handleFileSelect(file);

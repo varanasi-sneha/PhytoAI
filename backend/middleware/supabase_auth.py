@@ -22,7 +22,8 @@ def supabase_auth_required(f):
             if not user_response or not user_response.user:
                 return jsonify({'error': 'Token is invalid or expired! Please login again.'}), 401
                 
-            current_user = user_response.user.id
+            # Pass the full user object to the route (so we can upsert into users table)
+            current_user = user_response.user
         except Exception as e:
             return jsonify({'error': str(e)}), 401
             
