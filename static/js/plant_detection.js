@@ -135,7 +135,7 @@ detectBtn.addEventListener("click", async () => {
     const { data: { session } } = await window.supabaseClient.auth.getSession();
     const token = session?.access_token;
 
-    const response = await fetch("/api/predict", {
+    const response = await fetch("/api/predict/", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`
@@ -143,7 +143,13 @@ detectBtn.addEventListener("click", async () => {
       body: formData
     });
 
-    const data = await response.json();
+    const responseText = await response.text();
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch {
+      data = { error: responseText || response.statusText };
+    }
 
     if (response.ok) {
       resultBox.style.display = "block";
@@ -156,7 +162,7 @@ detectBtn.addEventListener("click", async () => {
 
   } catch (err) {
     console.error("Prediction error:", err);
-    alert("Network error. Please check your connection and try again.");
+    alert(`Network error. ${err?.message || err}`);
   } finally {
     loaderContainer.style.display = "none";
     detectBtn.disabled = false;

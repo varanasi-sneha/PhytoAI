@@ -10,7 +10,7 @@ def get_history(current_user):
 
     response = supabase.table("scan_history")\
         .select("*")\
-        .eq("user_id", current_user)\
+        .eq("user_id", current_user.id)\
         .order("created_at", desc=True)\
         .execute()
 
