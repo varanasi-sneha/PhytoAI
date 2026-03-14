@@ -20,10 +20,11 @@ def predict(current_user):
 
     try:
         # Upsert by id to avoid duplicate-email conflict and keep FK path consistent.
-        supabase.table('users').upsert({
-        'id': current_user.id,
-        'email': getattr(current_user, 'email', None)
-        }, on_conflict='id').execute()
+        supabase.table("users").upsert({
+        "id": current_user.id,
+        "email": current_user.email,
+        "name": current_user.user_metadata.get("full_name")
+        }, on_conflict="id").execute()
         supabase.table('scan_history').insert({
             'user_id': current_user.id,
             'prediction': prediction_data['disease'],
