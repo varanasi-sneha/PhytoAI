@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en">
 
 <head>
@@ -7,6 +6,29 @@
 <title>PhytoAI</title>
 
 <link rel="stylesheet" href="/static/css/homepage.css">
+
+<style>
+#profileIcon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #4CAF50;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.menu-item {
+    padding: 10px 15px;
+    cursor: pointer;
+}
+.menu-item:hover {
+    background: #f5f5f5;
+}
+</style>
 
 </head>
 
@@ -17,7 +39,29 @@
 <a href="/" class="logo">PhytoAI🪴</a>
 
 <div class="nav-buttons">
+
 <button id="authBtn">Login/Signup🌱</button>
+
+<div id="profileContainer" style="display:none; position:relative;">
+
+    <div id="profileIcon"></div>
+
+    <div id="dropdownMenu" style="
+        display:none;
+        position:absolute;
+        right:0;
+        top:50px;
+        background:white;
+        border-radius:10px;
+        box-shadow:0 4px 10px rgba(0,0,0,0.1);
+        overflow:hidden;
+    ">
+        <div class="menu-item" onclick="goProfile()">Profile</div>
+        <div class="menu-item" onclick="logout()">Logout</div>
+    </div>
+
+</div>
+
 </div>
 
 </div>
@@ -46,9 +90,52 @@
 
 {% include "components/auth_modal.html" %}
 
-<script src="/static/js/auth.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 
+<script src="/static/js/auth.js"></script>
 <script src="/static/js/homepage.js"></script>
+<script src="/static/js/theme.js"></script>
+
+<script>
+async function initNavbar() {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+
+    const authBtn = document.getElementById("authBtn");
+    const profileContainer = document.getElementById("profileContainer");
+    const profileIcon = document.getElementById("profileIcon");
+    const dropdown = document.getElementById("dropdownMenu");
+
+    if (session) {
+        authBtn.style.display = "none";
+        profileContainer.style.display = "block";
+
+        const name = session.user.user_metadata?.full_name || "User";
+        const initials = name.split(" ").map(n => n[0]).join("").toUpperCase();
+
+        profileIcon.innerText = initials;
+
+        profileIcon.onclick = () => {
+            dropdown.style.display =
+                dropdown.style.display === "block" ? "none" : "block";
+        };
+
+    } else {
+        authBtn.style.display = "block";
+        profileContainer.style.display = "none";
+    }
+}
+
+function goProfile() {
+    window.location.href = "/profile";
+}
+
+async function logout() {
+    await supabaseClient.auth.signOut();
+    window.location.reload();
+}
+
+initNavbar();
+</script>
 
 </body>
 

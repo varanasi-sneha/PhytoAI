@@ -1,7 +1,8 @@
 from supabase import create_client
-from backend.config import Config
 
-supabase = create_client(
-    Config.SUPABASE_URL,
-    Config.SUPABASE_KEY
-)
+SUPABASE_URL = "https://eabarbrhjoptxagcnomy.supabase.co"
+SUPABASE_KEY = "sb_publishable_JPouxdPJhmiwdJ-_dlWXIg_pfMcsDUO"
+
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+print("Supabase connected")
