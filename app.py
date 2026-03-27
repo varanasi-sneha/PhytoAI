@@ -3,6 +3,7 @@ import os
 
 from backend.config import Config
 from backend.routes.prediction_routes import prediction_bp
+from backend.routes.prevention_routes import prevention_bp
 
 # Initialize Flask App
 
@@ -16,7 +17,7 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 # Register API blueprints
 
 app.register_blueprint(prediction_bp, url_prefix='/api/predict')
-
+app.register_blueprint(prevention_bp)
 # ======================
 
 # FRONTEND ROUTES

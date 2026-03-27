@@ -1,91 +1,180 @@
 <!DOCTYPE html>
-
 <html lang="en">
-
 <head>
+  <meta charset="UTF-8">
+  <title>Plant Disease Detection | PhytoAI</title>
+  <link rel="stylesheet" href="/static/css/homepage.css">
+  <link rel="stylesheet" href="/static/css/plant_detection.css">
+  <style>
+    /* ── Prevention Card Styles ── */
+    .prevention-card {
+      margin-top: 24px;
+      border-radius: 16px;
+      overflow: hidden;
+      font-family: sans-serif;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      display: none; /* hidden until result comes in */
+    }
 
-<meta charset="UTF-8">
-<title>Plant Disease Detection | PhytoAI</title>
+    .prevention-header {
+      padding: 16px 20px;
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
 
-<link rel="stylesheet" href="/static/css/homepage.css">
-<link rel="stylesheet" href="/static/css/plant_detection.css">
+    .prevention-header h3 {
+      margin: 0;
+      font-size: 18px;
+    }
 
+    .severity-badge {
+      padding: 4px 12px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.25);
+      font-size: 12px;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+
+    .prevention-description {
+      padding: 14px 20px;
+      background: #f8f9fa;
+      color: #555;
+      font-size: 14px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .prevention-sections {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      background: white;
+    }
+
+    .prevention-section {
+      padding: 16px 20px;
+      border-right: 1px solid #f0f0f0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .prevention-section:nth-child(even) {
+      border-right: none;
+    }
+
+    .prevention-section h4 {
+      margin: 0 0 10px 0;
+      font-size: 14px;
+      color: #333;
+    }
+
+    .prevention-section ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .prevention-section ul li {
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 5px;
+      line-height: 1.4;
+    }
+
+    .prevention-loader {
+      text-align: center;
+      padding: 20px;
+      color: #888;
+      font-size: 14px;
+      display: none;
+    }
+
+    @media (max-width: 600px) {
+      .prevention-sections {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
 
 <body>
 
 <div class="navbar">
-
-<a href="/" class="logo">PhytoAI🪴</a>
-
-<div class="nav-buttons">
-
-<button onclick="history.back()">← Back</button>
-
-<button id="authBtn">Login/Signup🌱</button>
-
-</div>
-
+  <a href="/" class="logo">PhytoAI🪴</a>
+  <div class="nav-buttons">
+    <button onclick="history.back()">← Back</button>
+    <button id="authBtn">Login/Signup🌱</button>
+  </div>
 </div>
 
 <div class="detect-container">
 
-<h1>Plant Disease Detection 🌿</h1>
+  <h1>Plant Disease Detection 🌿</h1>
+  <p>Upload a leaf image to detect plant disease</p>
 
-<p>Upload a leaf image to detect plant disease</p>
+  <div class="upload-box" id="uploadBox">
+    <div class="upload-icon">📁</div>
+    <div class="upload-text">
+      <b>Drag & Drop</b> an image here<br>or click to select file
+    </div>
+    <input type="file" id="imageInput" accept="image/*">
+    <div class="image-preview">
+      <img id="previewImage">
+    </div>
+  </div>
 
-<div class="upload-box" id="uploadBox">
+  <div class="action-buttons">
+    <button class="reset-btn" id="resetBtn">Reset</button>
+    <button class="detect-btn" id="detectBtn">Detect Disease</button>
+  </div>
 
-<div class="upload-icon">📁</div>
+  <div class="loader-container" id="loaderContainer">
+    <div class="loader"></div>
+  </div>
 
-<div class="upload-text">
-<b>Drag & Drop</b> an image here<br>
-or click to select file
-</div>
+  <!-- Original result box — keep as is -->
+  <div class="result-box" id="resultBox">
+    <h2>Detection Result</h2>
+    <div id="resultDisease"></div>
+    <div class="confidence-container">
+      <div id="resultConfidenceText"></div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="confidenceBar"></div>
+      </div>
+    </div>
+  </div>
 
-<input type="file" id="imageInput" accept="image/*">
+  <!-- ── Prevention loader ── -->
+  <div class="prevention-loader" id="preventionLoader">
+    ⏳ Loading prevention measures...
+  </div>
 
-<div class="image-preview">
-<img id="previewImage">
-</div>
-
-</div>
-
-<div class="action-buttons">
-
-<button class="reset-btn" id="resetBtn">
-Reset
-</button>
-
-<button class="detect-btn" id="detectBtn">
-Detect Disease
-</button>
-
-</div>
-
-<div class="loader-container" id="loaderContainer">
-
-<div class="loader"></div>
-
-</div>
-
-<div class="result-box" id="resultBox">
-
-<h2>Detection Result</h2>
-
-<div id="resultDisease"></div>
-
-<div class="confidence-container">
-
-<div id="resultConfidenceText"></div>
-
-<div class="progress-bar-bg">
-<div class="progress-bar-fill" id="confidenceBar"></div>
-</div>
-
-</div>
-
-</div>
+  <!-- ── Prevention Card (shown after detection) ── -->
+  <div class="prevention-card" id="preventionCard">
+    <div class="prevention-header" id="preventionHeader">
+      <h3 id="preventionTitle">Prevention & Treatment</h3>
+      <span class="severity-badge" id="severityBadge"></span>
+    </div>
+    <div class="prevention-description" id="preventionDesc"></div>
+    <div class="prevention-sections">
+      <div class="prevention-section">
+        <h4>🛡️ Prevention Measures</h4>
+        <ul id="preventionList"></ul>
+      </div>
+      <div class="prevention-section">
+        <h4>💊 Treatment Options</h4>
+        <ul id="treatmentList"></ul>
+      </div>
+      <div class="prevention-section">
+        <h4>🌿 Organic Solutions</h4>
+        <ul id="organicList"></ul>
+      </div>
+      <div class="prevention-section">
+        <h4>🧪 Chemical Solutions</h4>
+        <ul id="chemicalList"></ul>
+      </div>
+    </div>
+  </div>
 
 </div>
 
@@ -93,8 +182,76 @@ Detect Disease
 
 <script src="/static/js/auth.js"></script>
 
+<script>
+  // ── Severity color map ──
+  const severityColors = {
+    low:      '#22c55e',
+    moderate: '#f59e0b',
+    high:     '#ef4444',
+    critical: '#7f1d1d'
+  };
+
+  // ── Render prevention card ──
+  function renderPrevention(data) {
+    const color = severityColors[data.severity] || '#4caf50';
+
+    document.getElementById('preventionHeader').style.background = color;
+    document.getElementById('preventionTitle').textContent = '🌿 ' + data.disease_name.replace(/_/g, ' ').replace(/___/g, ' — ');
+    document.getElementById('severityBadge').textContent = data.severity.toUpperCase();
+    document.getElementById('preventionDesc').textContent = data.description;
+
+    const fillList = (id, items) => {
+      const ul = document.getElementById(id);
+      ul.innerHTML = '';
+      (items || []).forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = item;
+        ul.appendChild(li);
+      });
+    };
+
+    fillList('preventionList', data.prevention_measures);
+    fillList('treatmentList', data.treatment_options);
+    fillList('organicList', data.organic_solutions);
+    fillList('chemicalList', data.chemical_solutions);
+
+    document.getElementById('preventionLoader').style.display = 'none';
+    document.getElementById('preventionCard').style.display = 'block';
+  }
+
+  // ── Fetch prevention from backend ──
+  async function fetchPrevention(diseaseName) {
+    document.getElementById('preventionCard').style.display = 'none';
+    document.getElementById('preventionLoader').style.display = 'block';
+
+    try {
+      const res = await fetch('/api/prevention', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ disease_name: diseaseName })
+      });
+      const result = await res.json();
+
+      if (result.success && result.data) {
+        renderPrevention(result.data);
+      } else {
+        document.getElementById('preventionLoader').textContent = '⚠️ No prevention data found.';
+      }
+    } catch (err) {
+      document.getElementById('preventionLoader').textContent = '❌ Could not load prevention data.';
+      console.error(err);
+    }
+  }
+
+  // ── Reset prevention card on reset button ──
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    document.getElementById('preventionCard').style.display = 'none';
+    document.getElementById('preventionLoader').style.display = 'none';
+  });
+</script>
+
+<!-- plant_detection.js loads AFTER fetchPrevention is defined above -->
 <script src="/static/js/plant_detection.js"></script>
 
 </body>
-
 </html>

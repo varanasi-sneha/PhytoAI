@@ -150,6 +150,10 @@ detectBtn.addEventListener("click", async () => {
       resultDisease.innerText = `Detected: ${data.disease}`;
       resultConfidenceText.innerText = `Confidence: ${data.confidence_percentage}`;
       confidenceBar.style.width = `${data.confidence * 100}%`;
+
+      // ── Fetch prevention measures using raw disease name (no prefix)
+      fetchPrevention(data.disease);
+
     } else {
       alert(data.error || "Prediction failed. Please try again.");
     }

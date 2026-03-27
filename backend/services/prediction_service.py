@@ -2,6 +2,8 @@ import os
 from werkzeug.utils import secure_filename
 from backend.config import Config
 from predict import predict_image
+from backend.services.prevention_service import get_prevention_data
+from backend.services.prevention_service import normalize_class_name
 
 class PredictionService:
     
@@ -24,7 +26,16 @@ class PredictionService:
         try:
             # Predict using our updated model inference module
             prediction_data = predict_image(filepath)
-            
+
+            disease_name = prediction_data.get("disease") or prediction_data.get("class") or prediction_data.get("label")
+
+            if disease_name:
+                normalized_name = normalize_class_name(disease_name)
+                prediction_data["disease"] = normalized_name   # ✅ FORCE CORRECT FORMAT
+
+                prevention = get_prevention_data(normalized_name)
+                if prevention:
+                    prediction_data["prevention"] = prevention
             # Clean up uploaded image
             os.remove(filepath)
             
