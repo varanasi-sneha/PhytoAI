@@ -2,16 +2,19 @@ from backend.utils.supabase_client import supabase
 from flask import Flask, render_template, request, jsonify
 import os
 
+from backend.routes.profile_routes import profile_bp
 from backend.config import Config
 from backend.routes.prediction_routes import prediction_bp
 from backend.routes.prevention_routes import prevention_bp
 from backend.routes.history_routes import history_bp
 
+print("URL:", os.getenv("SUPABASE_URL"))
+print("KEY:", os.getenv("SUPABASE_KEY"))
 # Initialize Flask App
 
 app = Flask(__name__)
 app.config.from_object(Config)
-
+app.register_blueprint(profile_bp, url_prefix="/api")
 # Ensure upload directory exists
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
