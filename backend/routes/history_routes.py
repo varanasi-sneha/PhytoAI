@@ -15,3 +15,17 @@ def get_history(current_user):
         .execute()
 
     return jsonify(response.data)
+
+@history_bp.route("/update-profile", methods=["POST"])
+@supabase_auth_required
+def update_profile(current_user):
+    from flask import request, jsonify
+
+    data = request.json
+
+    supabase.table("users").update({
+        "first_name": data.get("first_name"),
+        "last_name": data.get("last_name")
+    }).eq("id", current_user.id).execute()
+
+    return jsonify({"message": "updated"})

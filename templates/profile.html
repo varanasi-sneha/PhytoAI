@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Profile</title>
+
+<link rel="stylesheet" href="/static/css/theme.css">
+
+<style>
+.container {
+    max-width: 900px;
+    margin: 40px auto;
+    padding: 10px;
+}
+
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.profile-header {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+
+.avatar {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 30px;
+}
+
+#profileImg {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: none;
+}
+
+.tabs {
+    margin: 20px 0;
+}
+
+.tabs button {
+    margin-right: 10px;
+}
+
+.history-card {
+    margin-top: 10px;
+    padding: 12px;
+    border-radius: 10px;
+    background: var(--card);
+}
+
+/* small polish */
+button {
+    cursor: pointer;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<!-- TOP BAR -->
+<div class="topbar">
+    <button class="secondary" onclick="goHome()">← Home</button>
+    <button class="secondary" onclick="toggleTheme()">Toggle Theme</button>
+</div>
+
+<!-- PROFILE -->
+<div class="card profile-header">
+
+    <div>
+        <!-- IMAGE -->
+        <img id="profileImg">
+
+        <!-- FALLBACK -->
+        <div id="avatarFallback" class="avatar"></div>
+
+        <!-- FILE INPUT -->
+        <input type="file" id="uploadInput" accept="image/jpeg,image/jpg" hidden>
+
+        <br>
+
+        <!-- BUTTON -->
+        <button class="primary" onclick="uploadClick()">Change Photo</button>
+    </div>
+
+    <div>
+        <h2 id="name"></h2>
+        <p id="email"></p>
+        <p id="stats"></p>
+    </div>
+
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+    <button class="secondary" onclick="showTab('overview')">Overview</button>
+    <button class="secondary" onclick="showTab('history')">History</button>
+    <button class="secondary" onclick="showTab('settings')">Settings</button>
+</div>
+
+<!-- TAB CONTENT -->
+<div id="overviewTab" class="card"></div>
+<div id="historyTab" class="card" style="display:none;"></div>
+<div id="settingsTab" class="card" style="display:none;"></div>
+
+</div>
+
+<!-- SCRIPTS -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="/static/js/theme.js"></script>
+
+<script>
+const supabaseUrl = "https://eabarbrhjoptxagcnomy.supabase.co";
+const supabaseKey = "sb_publishable_JPouxdPJhmiwdJ-_dlWXIg_pfMcsDUO";
+window.supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+</script>
+
+<script src="/static/profile.js"></script>
+
+</body>
+</html>
