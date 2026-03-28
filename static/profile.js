@@ -186,6 +186,10 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
+async function goHome() {
+    window.location.href = "/";
+}
+
 // ---------- LOGOUT ----------
 async function logout() {
     await supabaseClient.auth.signOut();
