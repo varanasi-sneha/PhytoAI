@@ -196,5 +196,10 @@ async function logout() {
     window.location.href = "/";
 }
 
+async function goHome() {
+    
+    window.location.href = "/";
+}
+
 // ---------- INIT ----------
 loadProfile();
