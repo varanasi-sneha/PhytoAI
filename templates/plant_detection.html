@@ -1,17 +1,14 @@
 <!DOCTYPE html>
-
 <html lang="en">
-  
 <head>
   <meta charset="UTF-8">
   <title>Plant Disease Detection | PhytoAI</title>
-
   <link rel="stylesheet" href="/static/css/homepage.css">
   <link rel="stylesheet" href="/static/css/plant_detection.css">
   <link rel="stylesheet" href="/static/css/theme.css">
 
   <style>
-    /* ── Prevention Card Styles ── */
+    /* ── Prevention Card ───────────────────────────────────── */
     .prevention-card {
       margin-top: 24px;
       border-radius: 16px;
@@ -21,120 +18,185 @@
       display: none;
     }
 
+    .prevention-header {
+      padding: 16px 20px;
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
     .prevention-header h3 {
       margin: 0;
       font-size: 18px;
     }
-  </style>
-</head>
 
+    .severity-badge {
+      padding: 4px 12px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.25);
+      font-size: 12px;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+
+    .prevention-description {
+      padding: 14px 20px;
+      background: #f8f9fa;
+      color: #555;
+      font-size: 14px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .prevention-sections {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: white;
+    }
+
+    .prevention-section {
+      padding: 16px 20px;
+      border-right: 1px solid #f0f0f0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .prevention-section:nth-child(even) {
+      border-right: none;
+    }
+
+    .prevention-section h4 {
+      margin: 0 0 10px 0;
+      font-size: 14px;
+      color: #333;
+    }
+
+    .prevention-section ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .prevention-section ul li {
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 5px;
+      line-height: 1.4;
+    }
+
+    .prevention-loader {
+      text-align: center;
+      padding: 20px;
+      color: #888;
+      font-size: 14px;
+      display: none;
+    }
+
+    @media (max-width: 600px) {
+      .prevention-sections {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
 
 <body>
 
 <div class="navbar">
-
-<a href="/" class="logo">PhytoAI🪴</a>
-
-<div class="nav-buttons">
-
-<button onclick="history.back()">← Back</button>
-
-<button id="authBtn">Login/Signup🌱</button>
-
-</div>
-
+  <a href="/" class="logo">PhytoAI🪴</a>
+  <div class="nav-buttons">
+    <button onclick="history.back()">← Back</button>
+    <button id="authBtn">Login/Signup🌱</button>
+  </div>
 </div>
 
 <div class="detect-container">
 
-<h1>Plant Disease Detection 🌿</h1>
+  <h1>Plant Disease Detection 🌿</h1>
+  <p>Upload a leaf image to detect plant disease</p>
 
-<p>Upload a leaf image to detect plant disease</p>
+  <!-- Upload Box -->
+  <div class="upload-box" id="uploadBox">
+    <div class="upload-icon">📁</div>
+    <div class="upload-text">
+      <b>Drag & Drop</b> an image here<br>or click to select file
+    </div>
+    <input type="file" id="imageInput" accept="image/*">
+    <div class="image-preview">
+      <img id="previewImage">
+    </div>
+  </div>
 
-<div class="upload-box" id="uploadBox">
+  <!-- Camera Section -->
+  <div class="camera-section">
+    <button id="openCameraBtn" class="camera-btn">📷 Use Camera</button>
+    <div class="camera-box" id="cameraBox" style="display:none;">
+      <video id="cameraVideo" autoplay></video>
+      <button id="captureBtn">Capture Photo</button>
+      <canvas id="cameraCanvas" style="display:none;"></canvas>
+    </div>
+  </div>
 
-<div class="upload-icon">📁</div>
+  <!-- Action Buttons -->
+  <div class="action-buttons">
+    <button class="reset-btn" id="resetBtn">Reset</button>
+    <button class="detect-btn" id="detectBtn">Detect Disease</button>
+  </div>
 
-<div class="upload-text">
-<b>Drag & Drop</b> an image here<br>
-or click to select file
-</div>
+  <!-- Loader -->
+  <div class="loader-container" id="loaderContainer">
+    <div class="loader"></div>
+  </div>
 
-<input type="file" id="imageInput" accept="image/*">
+  <!-- Result Box -->
+  <div class="result-box" id="resultBox">
+    <h2>Detection Result</h2>
+    <div id="resultDisease"></div>
+    <div class="confidence-container">
+      <div id="resultConfidenceText"></div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="confidenceBar"></div>
+      </div>
+    </div>
+  </div>
 
-<div class="image-preview">
-<img id="previewImage">
-</div>
+  <!-- Prevention Loader -->
+  <div class="prevention-loader" id="preventionLoader">
+    ⏳ Loading prevention measures...
+  </div>
 
-</div>
+  <!-- Prevention Card -->
+  <div class="prevention-card" id="preventionCard">
+    <div class="prevention-header" id="preventionHeader">
+      <h3 id="preventionTitle">Prevention & Treatment</h3>
+      <span class="severity-badge" id="severityBadge"></span>
+    </div>
+    <div class="prevention-description" id="preventionDesc"></div>
+    <div class="prevention-sections">
+      <div class="prevention-section">
+        <h4>🛡️ Prevention Measures</h4>
+        <ul id="preventionList"></ul>
+      </div>
+      <div class="prevention-section">
+        <h4>💊 Treatment Options</h4>
+        <ul id="treatmentList"></ul>
+      </div>
+      <div class="prevention-section">
+        <h4>🌿 Organic Solutions</h4>
+        <ul id="organicList"></ul>
+      </div>
+      <div class="prevention-section">
+        <h4>🧪 Chemical Solutions</h4>
+        <ul id="chemicalList"></ul>
+      </div>
+    </div>
+  </div>
 
-<!-- CAMERA SECTION START -->
-
-<div class="camera-section">
-
-<button id="openCameraBtn" class="camera-btn">
-📷 Use Camera
-</button>
-
-<div class="camera-box" id="cameraBox" style="display:none;">
-
-<video id="cameraVideo" autoplay></video>
-
-<button id="captureBtn">Capture Photo</button>
-
-<canvas id="cameraCanvas" style="display:none;"></canvas>
-
-</div>
-
-</div>
-
-<!-- CAMERA SECTION END -->
-
-<div class="action-buttons">
-
-<button class="reset-btn" id="resetBtn">
-Reset
-</button>
-
-<button class="detect-btn" id="detectBtn">
-Detect Disease
-</button>
-
-</div>
-
-<div class="loader-container" id="loaderContainer">
-
-<div class="loader"></div>
-
-</div>
-
-<div class="result-box" id="resultBox">
-
-<h2>Detection Result</h2>
-
-<div id="resultDisease"></div>
-
-<div class="confidence-container">
-
-<div id="resultConfidenceText"></div>
-
-<div class="progress-bar-bg">
-<div class="progress-bar-fill" id="confidenceBar"></div>
-</div>
-
-</div>
-
-</div>
-
-</div>
+</div><!-- /detect-container -->
 
 {% include "components/auth_modal.html" %}
 
 <script src="/static/js/auth.js"></script>
-
+<!-- plant_detection.js must load AFTER the DOM elements above exist -->
 <script src="/static/js/plant_detection.js"></script>
 
 </body>
-
 </html>
