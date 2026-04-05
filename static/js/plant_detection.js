@@ -175,125 +175,109 @@ document.querySelector(".camera-section").style.display="block";
    DETECT
 ───────────────────────────────────────── */
 
-detectBtn.addEventListener("click",async ()=>{
+detectBtn.addEventListener("click", async () => {
 
-if(!selectedFile){
-alert("Upload an image first");
-return;
+if (!selectedFile) {
+  alert("Upload an image first");
+  return;
 }
 
-if(!(await isLoggedIn())){
-showLoginPrompt();
-return;
+if (!(await isLoggedIn())) {
+  showLoginPrompt();
+  return;
 }
 
-detectBtn.disabled=true;
-loaderContainer.style.display="block";
-resultBox.style.display="none";
+detectBtn.disabled = true;
+loaderContainer.style.display = "block";
+resultBox.style.display = "none";
 
-const formData=new FormData();
-formData.append("image",selectedFile);
+const formData = new FormData();
+formData.append("image", selectedFile);
 
-try{
+try {
 
-const { data: { session } } = await window.supabaseClient.auth.getSession();
-const token=session?.access_token;
+  const { data: { session } } = await window.supabaseClient.auth.getSession();
+  const token = session?.access_token;
 
-const response=await fetch("/api/predict/",{
-method:"POST",
-headers:{
-Authorization:`Bearer ${token}`
-},
-body:formData
-});
+  const response = await fetch("/api/predict/", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    body: formData
+  });
 
-const responseText=await response.text();
+  const responseText = await response.text();
 
-let data;
+  let data;
 
-try{
-data=JSON.parse(responseText);
-}catch{
-data={error:responseText || response.statusText};
-}
+  try {
+    data = JSON.parse(responseText);
+  } catch {
+    data = { error: responseText || response.statusText };
+  }
 
-if(response.ok){
+  if (response.ok) {
 
-resultBox.style.display="block";
-resultDisease.innerText=`Detected: ${data.disease}`;
-resultConfidenceText.innerText=`Confidence: ${data.confidence_percentage}`;
-confidenceBar.style.width=`${data.confidence*100}%`;
+    resultBox.style.display = "block";
+    resultDisease.innerText = `Detected: ${data.disease}`;
+    resultConfidenceText.innerText = `Confidence: ${data.confidence_percentage}`;
+    confidenceBar.style.width = `${data.confidence * 100}%`;
 
-}else{
+    // ✅ KEEP THIS (prevention feature)
+    fetchPrevention(data.disease);
 
-alert(data.error || "Prediction failed. Please try again.");
+  } else {
+    alert(data.error || "Prediction failed. Please try again.");
+  }
 
-}
+} catch (err) {
 
-}catch(err){
+  console.error("Prediction error:", err);
+  alert(`Network error. ${err?.message || err}`);
 
-console.error("Prediction error:",err);
-alert(`Network error. ${err?.message || err}`);
+} finally {
 
-}finally{
-
-loaderContainer.style.display="none";
-detectBtn.disabled=false;
-
-}
-
-});
-
-
-/* =========================
-   CAMERA OPEN
-========================= */
-
-openCameraBtn.addEventListener("click",async ()=>{
-
-try{
-
-cameraStream=await navigator.mediaDevices.getUserMedia({video:true});
-
-cameraVideo.srcObject=cameraStream;
-cameraBox.style.display="block";
-
-}catch(err){
-
-alert("Camera permission denied");
+  loaderContainer.style.display = "none";
+  detectBtn.disabled = false;
 
 }
 
 });
 
-
-/* =========================
-   CAPTURE PHOTO
-========================= */
-
-captureBtn.addEventListener("click",()=>{
-
-const context=cameraCanvas.getContext("2d");
-
-cameraCanvas.width=cameraVideo.videoWidth;
-cameraCanvas.height=cameraVideo.videoHeight;
-
-context.drawImage(cameraVideo,0,0);
-
-cameraCanvas.toBlob((blob)=>{
-
-const file=new File([blob],"camera.jpg",{type:"image/jpeg"});
-
-/* Use existing upload system */
-handleFileSelect(file);
-
-/* Stop camera */
-if(cameraStream){
-cameraStream.getTracks().forEach(track=>track.stop());
-}
-
-cameraBox.style.display="none";
-
+// CAMERA OPEN
+openCameraBtn.addEventListener("click", async () => {
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
+    cameraVideo.srcObject = cameraStream;
+    cameraBox.style.display = "block";
+  } catch (err) {
+    alert("Camera permission denied");
+  }
 });
+
+// CAPTURE
+captureBtn.addEventListener("click", () => {
+
+  const context = cameraCanvas.getContext("2d");
+
+  cameraCanvas.width = cameraVideo.videoWidth;
+  cameraCanvas.height = cameraVideo.videoHeight;
+
+  context.drawImage(cameraVideo, 0, 0);
+
+  cameraCanvas.toBlob((blob) => {
+
+    const file = new File([blob], "camera.jpg", { type: "image/jpeg" });
+
+    handleFileSelect(file);
+
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+    }
+
+    cameraBox.style.display = "none";
+
+  });
 
 });
