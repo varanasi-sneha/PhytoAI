@@ -2,97 +2,170 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plant Disease Detection | PhytoAI</title>
   <link rel="stylesheet" href="/static/css/homepage.css">
   <link rel="stylesheet" href="/static/css/plant_detection.css">
   <link rel="stylesheet" href="/static/css/theme.css">
 
   <style>
-    /* ── Prevention Card ───────────────────────────────────── */
+    /* ── Two-column results layout ── */
+    .results-layout {
+      display: none; /* shown by JS */
+      flex-direction: row;
+      align-items: flex-start;
+      gap: 32px;
+      width: 100%;
+      max-width: 1100px;
+      margin-top: 50px;
+    }
+
+    /* Left: result box takes fixed width */
+    .results-layout .result-box {
+      flex: 0 0 360px;
+      max-width: 360px;
+      margin-top: 0; /* reset margin from plant_detection.css */
+      display: block !important; /* always visible once layout shows */
+    }
+
+    /* Right: prevention column fills remaining space */
+    .prevention-column {
+      flex: 1;
+      min-width: 0;
+    }
+
+    /* Prevention card — full width within its column */
     .prevention-card {
-      margin-top: 24px;
-      border-radius: 16px;
+      width: 100%;
+      border-radius: 20px;
       overflow: hidden;
-      font-family: sans-serif;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      box-shadow: 0 16px 50px var(--color-shadow);
       display: none;
+      animation: slideUp 0.5s ease;
+    }
+
+    .prevention-loader {
+      text-align: center;
+      padding: 30px 32px;
+      color: var(--color-text-muted);
+      font-size: 14px;
+      display: none;
+      font-weight: 500;
     }
 
     .prevention-header {
-      padding: 16px 20px;
+      padding: 24px 32px;
       color: white;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      background: var(--color-primary);
     }
 
     .prevention-header h3 {
       margin: 0;
       font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
     }
 
     .severity-badge {
-      padding: 4px 12px;
+      padding: 6px 14px;
       border-radius: 20px;
-      background: rgba(255,255,255,0.25);
+      background: rgba(255, 255, 255, 0.25);
       font-size: 12px;
-      font-weight: bold;
+      font-weight: 700;
       letter-spacing: 1px;
+      backdrop-filter: blur(10px);
     }
 
     .prevention-description {
-      padding: 14px 20px;
-      background: #f8f9fa;
-      color: #555;
+      padding: 20px 32px;
+      background: rgba(26, 93, 66, 0.02);
+      color: var(--color-text);
       font-size: 14px;
-      border-bottom: 1px solid #eee;
+      line-height: 1.6;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    body.dark-mode .prevention-description {
+      background: rgba(255, 255, 255, 0.05);
     }
 
     .prevention-sections {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      background: white;
+      background: var(--color-card);
+    }
+
+    body.dark-mode .prevention-sections {
+      background: var(--color-card);
     }
 
     .prevention-section {
-      padding: 16px 20px;
-      border-right: 1px solid #f0f0f0;
-      border-bottom: 1px solid #f0f0f0;
+      padding: 28px 32px;
+      border-right: 1px solid var(--color-border);
+      border-bottom: 1px solid var(--color-border);
     }
 
-    .prevention-section:nth-child(even) {
-      border-right: none;
-    }
+    .prevention-section:nth-child(even) { border-right: none; }
+    .prevention-section:nth-child(n+3) { border-bottom: none; }
 
     .prevention-section h4 {
-      margin: 0 0 10px 0;
-      font-size: 14px;
-      color: #333;
+      margin: 0 0 14px 0;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--color-primary);
+      letter-spacing: 0.4px;
     }
 
     .prevention-section ul {
       margin: 0;
-      padding-left: 18px;
+      padding-left: 20px;
+      list-style: none;
     }
 
     .prevention-section ul li {
       font-size: 13px;
-      color: #555;
-      margin-bottom: 5px;
-      line-height: 1.4;
+      color: var(--color-text-muted);
+      margin-bottom: 8px;
+      line-height: 1.5;
+      padding-left: 8px;
+      position: relative;
     }
 
-    .prevention-loader {
-      text-align: center;
-      padding: 20px;
-      color: #888;
-      font-size: 14px;
-      display: none;
+    .prevention-section ul li::before {
+      content: '•';
+      position: absolute;
+      left: -8px;
+      color: var(--color-accent);
+      font-weight: bold;
     }
 
-    @media (max-width: 600px) {
+    /* ── Mobile: stack vertically ── */
+    @media (max-width: 900px) {
+      .results-layout {
+        flex-direction: column;
+        max-width: 580px;
+      }
+
+      .results-layout .result-box {
+        flex: none;
+        max-width: 100%;
+        width: 100%;
+      }
+
       .prevention-sections {
         grid-template-columns: 1fr;
+      }
+
+      .prevention-section {
+        border-right: none !important;
+        border-bottom: 1px solid var(--color-border) !important;
+      }
+
+      .prevention-section:last-child {
+        border-bottom: none !important;
       }
     }
   </style>
@@ -113,89 +186,71 @@
   <h1>Plant Disease Detection 🌿</h1>
   <p>Upload a leaf image to detect plant disease</p>
 
-  <!-- Upload Box -->
   <div class="upload-box" id="uploadBox">
     <div class="upload-icon">📁</div>
-    <div class="upload-text">
-      <b>Drag & Drop</b> an image here<br>or click to select file
-    </div>
+    <div class="upload-text"><b>Drag & Drop</b> an image here<br>or click to select file</div>
     <input type="file" id="imageInput" accept="image/*">
-    <div class="image-preview">
-      <img id="previewImage">
-    </div>
+    <div class="image-preview"><img id="previewImage"></div>
   </div>
 
-  <!-- Camera Section -->
   <div class="camera-section">
     <button id="openCameraBtn" class="camera-btn">📷 Use Camera</button>
     <div class="camera-box" id="cameraBox" style="display:none;">
-      <video id="cameraVideo" autoplay></video>
+      <video id="cameraVideo" autoplay></video><br>
       <button id="captureBtn">Capture Photo</button>
       <canvas id="cameraCanvas" style="display:none;"></canvas>
     </div>
   </div>
 
-  <!-- Action Buttons -->
   <div class="action-buttons">
     <button class="reset-btn" id="resetBtn">Reset</button>
     <button class="detect-btn" id="detectBtn">Detect Disease</button>
   </div>
 
-  <!-- Loader -->
-  <div class="loader-container" id="loaderContainer">
-    <div class="loader"></div>
-  </div>
+  <div class="loader-container" id="loaderContainer"><div class="loader"></div></div>
 
-  <!-- Result Box -->
-  <div class="result-box" id="resultBox">
-    <h2>Detection Result</h2>
-    <div id="resultDisease"></div>
-    <div class="confidence-container">
-      <div id="resultConfidenceText"></div>
-      <div class="progress-bar-bg">
-        <div class="progress-bar-fill" id="confidenceBar"></div>
+  <!-- Two-column results layout (flex row on desktop, stacked on mobile) -->
+  <div class="results-layout" id="resultsLayout">
+
+    <!-- LEFT: Detection result -->
+    <div class="result-box" id="resultBox">
+      <h2>Detection Result</h2>
+      <div id="resultDisease"></div>
+      <div class="confidence-container">
+        <div id="resultConfidenceText"></div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="confidenceBar"></div>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- Prevention Loader -->
-  <div class="prevention-loader" id="preventionLoader">
-    ⏳ Loading prevention measures...
-  </div>
-
-  <!-- Prevention Card -->
-  <div class="prevention-card" id="preventionCard">
-    <div class="prevention-header" id="preventionHeader">
-      <h3 id="preventionTitle">Prevention & Treatment</h3>
-      <span class="severity-badge" id="severityBadge"></span>
-    </div>
-    <div class="prevention-description" id="preventionDesc"></div>
-    <div class="prevention-sections">
-      <div class="prevention-section">
-        <h4>🛡️ Prevention Measures</h4>
-        <ul id="preventionList"></ul>
-      </div>
-      <div class="prevention-section">
-        <h4>💊 Treatment Options</h4>
-        <ul id="treatmentList"></ul>
-      </div>
-      <div class="prevention-section">
-        <h4>🌿 Organic Solutions</h4>
-        <ul id="organicList"></ul>
-      </div>
-      <div class="prevention-section">
-        <h4>🧪 Chemical Solutions</h4>
-        <ul id="chemicalList"></ul>
+    <!-- RIGHT: Prevention & treatment -->
+    <div class="prevention-column">
+      <div class="prevention-loader" id="preventionLoader">⏳ Loading prevention measures...</div>
+      <div class="prevention-card" id="preventionCard">
+        <div class="prevention-header" id="preventionHeader">
+          <h3 id="preventionTitle">Prevention & Treatment</h3>
+          <span class="severity-badge" id="severityBadge"></span>
+        </div>
+        <div class="prevention-description" id="preventionDesc"></div>
+        <div class="prevention-sections">
+          <div class="prevention-section"><h4>🛡️ Prevention Measures</h4><ul id="preventionList"></ul></div>
+          <div class="prevention-section"><h4>💊 Treatment Options</h4><ul id="treatmentList"></ul></div>
+          <div class="prevention-section"><h4>🌿 Organic Solutions</h4><ul id="organicList"></ul></div>
+          <div class="prevention-section"><h4>🧪 Chemical Solutions</h4><ul id="chemicalList"></ul></div>
+        </div>
       </div>
     </div>
+
   </div>
 
-</div><!-- /detect-container -->
+</div>
 
 {% include "components/auth_modal.html" %}
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 <script src="/static/js/auth.js"></script>
-<!-- plant_detection.js must load AFTER the DOM elements above exist -->
+<script src="/static/js/theme.js"></script>
 <script src="/static/js/plant_detection.js"></script>
 
 </body>

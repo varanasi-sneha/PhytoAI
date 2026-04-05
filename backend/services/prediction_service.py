@@ -5,41 +5,77 @@ from predict import predict_image
 from backend.services.prevention_service import get_prevention_data
 from backend.services.prevention_service import normalize_class_name
 
+
 class PredictionService:
-    
+
     @staticmethod
     def allowed_file(filename):
-        return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'png', 'jpg', 'jpeg'}
-    
+        return '.' in filename and \
+               filename.rsplit('.', 1)[1].lower() in {'png', 'jpg', 'jpeg'}
+
     @staticmethod
     def process_prediction(file):
+        # ── Basic file checks ────────────────────────────────
         if not file or file.filename == '':
             return {"error": "No selected file"}, 400
-            
+
         if not PredictionService.allowed_file(file.filename):
-            return {"error": "Invalid file type. Please upload a JPG or PNG."}, 400
-            
+            return {
+                "error": "invalid_file_type",
+                "message": "Invalid file type. Please upload a JPG or PNG image."
+            }, 400
+
         filename = secure_filename(file.filename)
         filepath = os.path.join(Config.UPLOAD_FOLDER, filename)
         file.save(filepath)
-        
+
         try:
-            # Predict using our updated model inference module
             prediction_data = predict_image(filepath)
 
-            disease_name = prediction_data.get("disease") or prediction_data.get("class") or prediction_data.get("label")
+            # ── Handle invalid predictions ───────────────────
+            if not prediction_data.get("valid"):
+                os.remove(filepath)
+                error_type = prediction_data.get("error")
 
+                if error_type == "unclear_image":
+                    return {
+                        "error": "unclear_image",
+                        "message": prediction_data.get("message")
+                    }, 422
+
+                if error_type == "not_a_spinach_leaf":
+                    return {
+                        "error": "not_a_spinach_leaf",
+                        "message": prediction_data.get("message"),
+                        "confidence": prediction_data.get("confidence"),
+                        "confidence_percentage": prediction_data.get("confidence_percentage"),
+                    }, 422
+
+                if error_type == "invalid_image":
+                    return {
+                        "error": "invalid_image",
+                        "message": prediction_data.get("message")
+                    }, 400
+
+                # Fallback for any other invalid case
+                return {
+                    "error": "prediction_failed",
+                    "message": "Could not process this image. Please try again."
+                }, 422
+
+            # ── Valid prediction — attach prevention data ─────
+            disease_name = prediction_data.get("disease")
             if disease_name:
                 normalized_name = normalize_class_name(disease_name)
-                prediction_data["disease"] = normalized_name   # ✅ FORCE CORRECT FORMAT
+                prediction_data["disease"] = normalized_name
 
                 prevention = get_prevention_data(normalized_name)
                 if prevention:
                     prediction_data["prevention"] = prevention
-            # Clean up uploaded image
+
             os.remove(filepath)
-            
             return prediction_data, 200
+
         except Exception as e:
             if os.path.exists(filepath):
                 os.remove(filepath)

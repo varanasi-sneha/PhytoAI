@@ -1,124 +1,350 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Profile</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profile | PhytoAI</title>
 
 <link rel="stylesheet" href="/static/css/theme.css">
+<link rel="stylesheet" href="/static/css/homepage.css">
 
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&family=Montserrat:wght@300;400;500;600;700;800&display=swap');
+
+body {
+  background: linear-gradient(180deg, var(--color-bg) 0%, var(--color-bg-light) 50%, var(--color-bg-lighter) 100%);
+  font-family: 'Montserrat', sans-serif;
+  min-height: 100vh;
+  padding-bottom: 60px;
+  color: var(--color-text);
+}
+
 .container {
-    max-width: 900px;
-    margin: 40px auto;
-    padding: 10px;
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 20px 40px;
+  animation: fadeInDown 0.6s ease-out;
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-30px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .topbar {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 40px;
+  flex-wrap: wrap;
 }
 
+.topbar button {
+  padding: 10px 20px;
+  font-size: 14px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  transition: var(--transition);
+  letter-spacing: 0.4px;
+}
+
+.topbar button.secondary {
+  background: rgba(26, 93, 66, 0.08);
+  color: var(--color-heading);
+  border: 1px solid rgba(26, 93, 66, 0.15);
+}
+
+body.dark-mode .topbar button.secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+}
+
+.topbar button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px var(--color-shadow);
+}
+
+.card {
+  background: var(--color-card);
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 8px 24px var(--color-shadow);
+  border: 1px solid var(--color-border);
+  transition: all 0.3s ease;
+  margin-bottom: 32px;
+}
+
+.card:hover { box-shadow: 0 12px 32px var(--color-shadow); }
+
 .profile-header {
-    display: flex;
-    gap: 20px;
-    align-items: center;
+  display: flex;
+  gap: 32px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.avatar-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
 }
 
 .avatar {
-    width: 90px;
-    height: 90px;
-    border-radius: 50%;
-    background: var(--accent);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 30px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 48px;
+  font-weight: bold;
+  box-shadow: 0 8px 24px rgba(26, 93, 66, 0.25);
+  border: 4px solid var(--color-bg);
 }
 
+body.dark-mode .avatar { border-color: var(--color-card); }
+
 #profileImg {
-    width: 90px;
-    height: 90px;
-    border-radius: 50%;
-    object-fit: cover;
-    display: none;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: none;
+  box-shadow: 0 8px 24px rgba(26, 93, 66, 0.25);
+  border: 4px solid var(--color-bg);
+  animation: fadeIn 0.4s ease;
+}
+
+body.dark-mode #profileImg { border-color: var(--color-card); }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+#uploadInput { display: none; }
+
+.profile-info { flex: 1; min-width: 250px; }
+
+.profile-info h2 {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-heading);
+  margin: 0 0 12px 0;
+  font-family: 'Lora', serif;
+}
+
+.profile-info p {
+  margin: 8px 0;
+  color: var(--color-text-muted);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.profile-info p strong {
+  color: var(--color-text);
+  font-weight: 600;
 }
 
 .tabs {
-    margin: 20px 0;
+  display: flex;
+  gap: 12px;
+  margin: 0 0 32px 0;
+  border-bottom: 2px solid var(--color-border);
+  flex-wrap: wrap;
 }
 
 .tabs button {
-    margin-right: 10px;
+  padding: 12px 20px;
+  background: transparent;
+  color: var(--color-text-muted);
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  font-weight: 600;
+  transition: var(--transition);
+  font-size: 15px;
+  letter-spacing: 0.4px;
+}
+
+.tabs button:hover,
+.tabs button.active {
+  color: var(--color-heading);
+  border-bottom-color: var(--color-heading);
+}
+
+.tab-content { display: none; }
+.tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+
+.tab-content h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-heading);
+  margin: 0 0 24px 0;
+  font-family: 'Lora', serif;
 }
 
 .history-card {
-    margin-top: 10px;
-    padding: 12px;
-    border-radius: 10px;
-    background: var(--card);
+  background: var(--color-card);
+  padding: 16px 20px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  margin-bottom: 12px;
+  transition: all 0.25s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 8px var(--color-shadow);
 }
 
-/* small polish */
-button {
-    cursor: pointer;
+.history-card:hover {
+  background: rgba(26, 93, 66, 0.03);
+  box-shadow: 0 6px 16px var(--color-shadow);
+  border-color: var(--color-heading);
+  transform: translateX(4px);
+}
+
+body.dark-mode .history-card:hover { background: rgba(255, 255, 255, 0.02); }
+
+.history-card strong { color: var(--color-heading); font-weight: 700; font-size: 15px; }
+.history-card .date { font-size: 12px; color: var(--color-text-muted); margin-bottom: 4px; }
+
+.history-card .confidence {
+  color: var(--color-accent);
+  font-weight: 700;
+  font-size: 14px;
+  background: rgba(74, 175, 80, 0.1);
+  padding: 6px 12px;
+  border-radius: 20px;
+}
+
+.settings-form { display: flex; flex-direction: column; gap: 20px; }
+
+.settings-form input {
+  padding: 12px 16px;
+  border: 1.5px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  transition: var(--transition);
+}
+
+body.dark-mode .settings-form input {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #f8fafc;
+}
+
+.settings-form input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px rgba(26, 93, 66, 0.1);
+}
+
+.settings-form button {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 700;
+  transition: var(--transition);
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  width: fit-content;
+  margin-top: 8px;
+}
+
+.settings-form .primary {
+  background: var(--color-primary);
+  color: white;
+  box-shadow: 0 6px 16px rgba(26, 93, 66, 0.2);
+}
+
+.settings-form .primary:hover {
+  background: var(--color-primary-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(26, 93, 66, 0.3);
+}
+
+.settings-form .secondary {
+  background: rgba(26, 93, 66, 0.08);
+  color: var(--color-heading);
+  border: 1px solid rgba(26, 93, 66, 0.15);
+}
+
+body.dark-mode .settings-form .secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+}
+
+.settings-form .secondary:hover { background: rgba(26, 93, 66, 0.15); transform: translateY(-2px); }
+
+.danger-btn {
+  background: #ef4444 !important;
+  color: white !important;
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.2) !important;
+}
+
+.danger-btn:hover {
+  background: #dc2626 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.3) !important;
+}
+
+#chart { max-width: 100%; max-height: 300px; }
+
+@media (max-width: 768px) {
+  .container { padding: 16px 20px; }
+  .card { padding: 24px; }
+  .profile-header { flex-direction: column; text-align: center; }
+  .avatar-section, .profile-info { width: 100%; }
+  .tabs { gap: 8px; }
+  .tabs button { padding: 10px 16px; font-size: 13px; }
+  .history-card { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .topbar { flex-direction: column; }
+  .topbar button { width: 100%; }
 }
 </style>
-
 </head>
-
 <body>
 
 <div class="container">
 
-<!-- TOP BAR -->
 <div class="topbar">
-    <button class="secondary" onclick="goHome()">← Home</button>
-    <button class="secondary" onclick="toggleTheme()">Toggle Theme</button>
+  <button class="secondary" onclick="goHome()">← Home</button>
 </div>
 
-<!-- PROFILE -->
 <div class="card profile-header">
+  <div class="avatar-section">
+    <img id="profileImg">
+    <div id="avatarFallback" class="avatar"></div>
+    <input type="file" id="uploadInput" accept="image/jpeg,image/jpg">
+    <button class="primary" onclick="uploadClick()">📸 Change Photo</button>
+  </div>
 
-    <div>
-        <!-- IMAGE -->
-        <img id="profileImg">
-
-        <!-- FALLBACK -->
-        <div id="avatarFallback" class="avatar"></div>
-
-        <!-- FILE INPUT -->
-        <input type="file" id="uploadInput" accept="image/jpeg,image/jpg" hidden>
-
-        <br>
-
-        <!-- BUTTON -->
-        <button class="primary" onclick="uploadClick()">Change Photo</button>
-    </div>
-
-    <div>
-        <h2 id="name"></h2>
-        <p id="email"></p>
-        <p id="stats"></p>
-    </div>
-
+  <div class="profile-info">
+    <h2 id="name"></h2>
+    <p><strong>Email:</strong> <span id="email"></span></p>
+    <p><strong>Total Scans:</strong> <span id="stats"></span></p>
+  </div>
 </div>
 
-<!-- TABS -->
 <div class="tabs">
-    <button class="secondary" onclick="showTab('overview')">Overview</button>
-    <button class="secondary" onclick="showTab('history')">History</button>
-    <button class="secondary" onclick="showTab('settings')">Settings</button>
+  <button class="active" onclick="showTab('overview')">📊 Overview</button>
+  <button onclick="showTab('history')">📜 History</button>
+  <button onclick="showTab('settings')">⚙️ Settings</button>
 </div>
 
-<!-- TAB CONTENT -->
-<div id="overviewTab" class="card"></div>
-<div id="historyTab" class="card" style="display:none;"></div>
-<div id="settingsTab" class="card" style="display:none;"></div>
+<div id="overviewTab" class="tab-content active card"></div>
+<div id="historyTab" class="tab-content card"></div>
+<div id="settingsTab" class="tab-content card"></div>
 
 </div>
 
-<!-- SCRIPTS -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="/static/js/theme.js"></script>

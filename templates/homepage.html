@@ -3,8 +3,8 @@
 
 <head>
 <meta charset="UTF-8">
-<title>PhytoAI</title>
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PhytoAI - Plant Disease Detection</title>
 <link rel="stylesheet" href="/static/css/homepage.css">
 
 <style>
@@ -12,21 +12,36 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: #4CAF50;
+    background: #1a5d42;
     color: white;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: bold;
     cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid #1a5d42;
+}
+
+#profileIcon:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(26, 93, 66, 0.3);
 }
 
 .menu-item {
-    padding: 10px 15px;
+    padding: 12px 20px;
     cursor: pointer;
+    transition: background 0.2s;
+    color: var(--color-text);
+    font-weight: 500;
 }
+
 .menu-item:hover {
-    background: #f5f5f5;
+    background: var(--color-bg);
+}
+
+body.dark-mode .menu-item:hover {
+    background: rgba(255, 255, 255, 0.08);
 }
 </style>
 
@@ -51,13 +66,16 @@
         position:absolute;
         right:0;
         top:50px;
-        background:white;
-        border-radius:10px;
-        box-shadow:0 4px 10px rgba(0,0,0,0.1);
+        background:var(--color-card);
+        border-radius:12px;
+        box-shadow:0 8px 24px var(--color-shadow);
         overflow:hidden;
+        border:1px solid var(--color-border);
+        z-index:10;
+        min-width:160px;
     ">
-        <div class="menu-item" onclick="goProfile()">Profile</div>
-        <div class="menu-item" onclick="logout()">Logout</div>
+        <div class="menu-item" onclick="goProfile()">👤 Profile</div>
+        <div class="menu-item" onclick="logout()">🚪 Logout</div>
     </div>
 
 </div>
@@ -68,7 +86,9 @@
 
 <div class="main">
 
-<h1>🪴Welcome to PhytoAI🪴</h1>
+<h1>🪴 Welcome to PhytoAI 🪴</h1>
+
+<p>Detect plant diseases with advanced AI technology</p>
 
 <div class="options">
 
@@ -85,7 +105,7 @@
 </div>
 
 <div class="footer">
-© 2026 PhytoAI
+© 2026 PhytoAI | Advanced Plant Disease Detection
 </div>
 
 {% include "components/auth_modal.html" %}
@@ -93,8 +113,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 
 <script src="/static/js/auth.js"></script>
-<script src="/static/js/homepage.js"></script>
 <script src="/static/js/theme.js"></script>
+<script src="/static/js/homepage.js"></script>
 
 <script>
 async function initNavbar() {
@@ -118,6 +138,13 @@ async function initNavbar() {
             dropdown.style.display =
                 dropdown.style.display === "block" ? "none" : "block";
         };
+
+        // Close dropdown when clicking outside
+        document.addEventListener("click", (e) => {
+            if (!profileContainer.contains(e.target)) {
+                dropdown.style.display = "none";
+            }
+        });
 
     } else {
         authBtn.style.display = "block";

@@ -1,7 +1,7 @@
 /* ============================================================
    plant_detection.js
    Handles: upload, drag-drop, camera, detect, prevention card
-   Works with the new spinach-only model error responses
+   Two-column layout: result box (left) | prevention (right)
 ============================================================ */
 
 /* ── Element refs ────────────────────────────────────────── */
@@ -10,7 +10,7 @@ const imageInput           = document.getElementById("imageInput");
 const previewImage         = document.getElementById("previewImage");
 const detectBtn            = document.getElementById("detectBtn");
 const resetBtn             = document.getElementById("resetBtn");
-const resultBox            = document.getElementById("resultBox");
+const resultsLayout        = document.getElementById("resultsLayout");
 const loaderContainer      = document.getElementById("loaderContainer");
 const resultDisease        = document.getElementById("resultDisease");
 const resultConfidenceText = document.getElementById("resultConfidenceText");
@@ -34,6 +34,18 @@ const severityColors = {
   high:     '#ef4444',
   critical: '#7f1d1d',
 };
+
+/* ─────────────────────────────────────────────────────────
+   LAYOUT HELPERS
+───────────────────────────────────────────────────────── */
+function showResultsLayout() {
+  resultsLayout.style.display = "flex";
+}
+
+function hideResultsLayout() {
+  resultsLayout.style.display = "none";
+  hidePrevention();
+}
 
 /* ─────────────────────────────────────────────────────────
    AUTH HELPERS
@@ -64,19 +76,14 @@ function handleFileSelect(file) {
     previewImage.src = URL.createObjectURL(file);
     previewImage.style.display = "block";
     resetBtn.style.display = "block";
-    resultBox.style.display = "none";
-    // Hide camera section once an image is chosen
+    hideResultsLayout();
     if (cameraSection) cameraSection.style.display = "none";
-    // Hide any previous prevention result
-    hidePrevention();
   } else if (file) {
     alert("Please upload a valid image file (JPG, PNG, etc.)");
   }
 }
 
 imageInput.addEventListener("change", (e) => handleFileSelect(e.target.files[0]));
-
-// Stop input click bubbling up to dropZone (avoids infinite open-dialog loop)
 imageInput.addEventListener("click", (e) => e.stopPropagation());
 
 /* ─────────────────────────────────────────────────────────
@@ -113,16 +120,13 @@ dropZone.addEventListener("drop", async (e) => {
 ───────────────────────────────────────────────────────── */
 resetBtn.addEventListener("click", (e) => {
   e.stopPropagation();
-
   selectedFile = null;
   imageInput.value = "";
   previewImage.src = "";
   previewImage.style.display = "none";
   resetBtn.style.display = "none";
-  resultBox.style.display = "none";
-
+  hideResultsLayout();
   if (cameraSection) cameraSection.style.display = "block";
-  hidePrevention();
 });
 
 /* ─────────────────────────────────────────────────────────
@@ -147,7 +151,6 @@ captureBtn.addEventListener("click", () => {
   cameraCanvas.toBlob((blob) => {
     const file = new File([blob], "camera.jpg", { type: "image/jpeg" });
     handleFileSelect(file);
-
     if (cameraStream) cameraStream.getTracks().forEach(t => t.stop());
     cameraBox.style.display = "none";
   });
@@ -166,8 +169,7 @@ detectBtn.addEventListener("click", async () => {
 
   detectBtn.disabled = true;
   loaderContainer.style.display = "block";
-  resultBox.style.display = "none";
-  hidePrevention();
+  hideResultsLayout();
 
   const formData = new FormData();
   formData.append("image", selectedFile);
@@ -189,17 +191,16 @@ detectBtn.addEventListener("click", async () => {
       data = { error: "Unexpected server response. Please try again." };
     }
 
+    // Show the two-column layout in all cases (success or error)
+    showResultsLayout();
+
     if (response.ok) {
       // ── Valid prediction ──────────────────────────────
-      resultBox.style.display = "block";
-
-      // Show clean display_name if available, fall back to raw disease
       const label = data.display_name || data.disease || "Unknown";
       resultDisease.innerText        = `Detected: ${label}`;
       resultConfidenceText.innerText = `Confidence: ${data.confidence_percentage}`;
       confidenceBar.style.width      = `${(data.confidence * 100).toFixed(1)}%`;
 
-      // Fetch prevention using raw disease name (backend expects this)
       fetchPrevention(data.disease);
 
     } else {
@@ -226,18 +227,18 @@ detectBtn.addEventListener("click", async () => {
 
   } catch (err) {
     console.error("Prediction error:", err);
-    alert(`Network error: ${err?.message || err}`);
+    showResultsLayout();
+    showError("⚠️ Network Error", err?.message || "Could not reach the server. Please try again.");
   } finally {
     loaderContainer.style.display = "none";
     detectBtn.disabled = false;
   }
 });
 
-/* ── Show a styled error inside resultBox ─────────────────── */
+/* ── Show a styled error in the result box ────────────────── */
 function showError(title, message) {
-  resultBox.style.display = "block";
   resultDisease.innerHTML = `<strong style="color:#ef4444">${title}</strong><br>
-    <span style="font-size:14px;color:#555">${message}</span>`;
+    <span style="font-size:14px;color:var(--color-text-muted)">${message}</span>`;
   resultConfidenceText.innerText = "";
   confidenceBar.style.width = "0%";
 }
@@ -246,8 +247,10 @@ function showError(title, message) {
    PREVENTION
 ───────────────────────────────────────────────────────── */
 function hidePrevention() {
-  document.getElementById("preventionCard").style.display   = "none";
-  document.getElementById("preventionLoader").style.display = "none";
+  const card   = document.getElementById("preventionCard");
+  const loader = document.getElementById("preventionLoader");
+  if (card)   card.style.display   = "none";
+  if (loader) loader.style.display = "none";
 }
 
 function renderPrevention(data) {
@@ -255,7 +258,7 @@ function renderPrevention(data) {
 
   document.getElementById("preventionHeader").style.background = color;
   document.getElementById("preventionTitle").textContent =
-    "🌿 " + (data.disease_name || "").replace(/___/g, " — ").replace(/_/g, " ");
+    "🌿 " + (data.disease_name || "").replace(/[_-]/g, " ").replace(/\(|\)/g, "");
   document.getElementById("severityBadge").textContent =
     (data.severity || "").toUpperCase();
   document.getElementById("preventionDesc").textContent = data.description || "";
