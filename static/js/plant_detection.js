@@ -281,3 +281,36 @@ captureBtn.addEventListener("click", () => {
   });
 
 });
+async function fetchPrevention(disease) {
+  try {
+
+    const { data: { session } } = await window.supabaseClient.auth.getSession();
+    const token = session?.access_token;
+
+    const response = await fetch("/api/prevention", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ disease })
+    });
+
+    const data = await response.json();
+
+    if (response.ok && data) {
+
+      // You can customize this UI later
+      console.log("Prevention data:", data);
+
+      // Example: show in alert (for now)
+      alert(`Prevention: ${data.prevention || JSON.stringify(data)}`);
+
+    } else {
+      console.warn("No prevention data found");
+    }
+
+  } catch (err) {
+    console.error("Prevention fetch error:", err);
+  }
+}
