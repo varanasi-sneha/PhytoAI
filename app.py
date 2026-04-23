@@ -7,6 +7,7 @@ from backend.config import Config
 from backend.routes.prediction_routes import prediction_bp
 from backend.routes.prevention_routes import prevention_bp
 from backend.routes.history_routes import history_bp
+from backend.routes.drug_classification_routes import drug_classification_bp
 
 print("URL:", os.getenv("SUPABASE_URL"))
 print("KEY:", os.getenv("SUPABASE_KEY"))
@@ -22,6 +23,7 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 # Register API blueprints
 
 app.register_blueprint(prediction_bp, url_prefix='/api/predict')
+app.register_blueprint(drug_classification_bp, url_prefix='/api/drug')
 app.register_blueprint(prevention_bp)
 app.register_blueprint(history_bp, url_prefix="/api")
 # ======================

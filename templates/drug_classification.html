@@ -1,59 +1,429 @@
-<!-- Auth Modal -->
-<div id="authModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:1000; justify-content:center; align-items:center;">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Natural Product Classifier | PhytoAI</title>
+  <link rel="stylesheet" href="/static/css/homepage.css">
+  <link rel="stylesheet" href="/static/css/plant_detection.css">
+  <link rel="stylesheet" href="/static/css/drug_classification.css">
+  <link rel="stylesheet" href="/static/css/theme.css">
 
-  <div style="background:#fff; border-radius:12px; padding:32px; width:100%; max-width:400px; position:relative; box-shadow: 0 8px 32px rgba(0,0,0,0.2);">
+  <style>
+    /* ── Layout ────────────────────────────────────────────────────────── */
+    .results-layout {
+      display: none;
+      flex-direction: row;
+      align-items: flex-start;
+      gap: 32px;
+      width: 100%;
+      max-width: 1100px;
+      margin-top: 50px;
+    }
+    .results-layout .result-box {
+      flex: 0 0 360px;
+      max-width: 360px;
+      margin-top: 0;
+      display: block !important;
+    }
+    .probabilities-column { flex: 1; min-width: 0; }
+    .probabilities-card {
+      width: 100%;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 16px 50px var(--color-shadow);
+      display: none;
+      animation: slideUp 0.5s ease;
+    }
+    .probabilities-header {
+      padding: 24px 32px;
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--color-primary);
+    }
+    .probabilities-header h3 { margin: 0; font-size: 18px; font-weight: 700; }
+    .class-badge {
+      padding: 6px 14px; border-radius: 20px;
+      background: rgba(255,255,255,0.25);
+      font-size: 12px; font-weight: 700; letter-spacing: 1px;
+    }
+    .probabilities-description {
+      padding: 16px 32px;
+      background: rgba(26,93,66,0.02);
+      color: var(--color-text);
+      font-size: 13px; line-height: 1.6;
+      border-bottom: 1px solid var(--color-border);
+    }
+    body.dark-mode .probabilities-description { background: rgba(255,255,255,0.05); }
+    .prob-classes { padding: 28px 32px; background: var(--color-card); }
+    .prob-item { margin-bottom: 20px; display: flex; flex-direction: column; gap: 6px; }
+    .prob-item:last-child { margin-bottom: 0; }
+    .prob-label {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 14px; font-weight: 600; color: var(--color-text);
+    }
+    .prob-value { font-weight: 700; color: var(--color-primary); }
+    .prob-bar-bg {
+      width: 100%; height: 8px;
+      background: rgba(26,93,66,0.1); border-radius: 4px; overflow: hidden;
+    }
+    body.dark-mode .prob-bar-bg { background: rgba(255,255,255,0.1); }
+    .prob-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+      border-radius: 4px;
+      transition: width 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
 
-    <button id="closeAuth" style="position:absolute; top:12px; right:16px; background:none; border:none; font-size:22px; cursor:pointer; color:#666;">✕</button>
+    /* ── Input section ─────────────────────────────────────────────────── */
+    .input-section {
+      width: 100%; max-width: 580px; margin-top: 36px; position: relative;
+    }
+    .input-label {
+      display: block; margin-bottom: 10px;
+      font-size: 15px; font-weight: 600; color: var(--color-text);
+    }
+    .input-type-badge {
+      display: inline-block; margin-left: 10px;
+      font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 20px;
+      background: rgba(26,93,66,0.1); color: var(--color-primary);
+      letter-spacing: 0.05em; vertical-align: middle;
+      transition: all 0.25s ease;
+    }
+    body.dark-mode .input-type-badge { background: rgba(134,239,172,0.15); color: #86efac; }
 
-    <!-- LOGIN FORM -->
-    <div id="loginForm">
-      <h2 style="margin-bottom:20px; text-align:center;">🌱 Login</h2>
+    /* Compound input field */
+    .compound-input {
+      width: 100%; padding: 14px 16px;
+      border: 2px solid var(--color-border); border-radius: 12px;
+      background: var(--color-card); color: var(--color-text);
+      font-family: 'Montserrat', sans-serif; font-size: 14px;
+      box-sizing: border-box; transition: var(--transition);
+      resize: none; min-height: 56px; line-height: 1.5;
+    }
+    body.dark-mode .compound-input {
+      background: rgba(255,255,255,0.05);
+      border-color: rgba(255,255,255,0.12);
+    }
+    .compound-input:focus {
+      outline: none; border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(26,93,66,0.1);
+    }
+    .compound-input.smiles-mode { font-family: 'Monaco','Menlo','Ubuntu Mono',monospace; font-size: 13px; }
 
-      <label style="display:block; margin-bottom:4px; font-weight:600;">Email</label>
-      <input id="loginEmail" type="email" placeholder="you@example.com"
-        style="width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; margin-bottom:14px; box-sizing:border-box;">
+    /* Autocomplete dropdown */
+    .autocomplete-dropdown {
+      position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+      background: var(--color-card);
+      border: 1px solid var(--color-border); border-radius: 12px;
+      box-shadow: 0 8px 30px var(--color-shadow);
+      z-index: 100; overflow: hidden; display: none;
+    }
+    .autocomplete-item {
+      padding: 11px 16px; cursor: pointer; font-size: 14px;
+      color: var(--color-text); border-bottom: 1px solid var(--color-border);
+      transition: background 0.15s;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .autocomplete-item:last-child { border-bottom: none; }
+    .autocomplete-item:hover { background: rgba(26,93,66,0.06); }
+    body.dark-mode .autocomplete-item:hover { background: rgba(255,255,255,0.06); }
+    .autocomplete-item-icon { font-size: 12px; opacity: 0.5; }
 
-      <label style="display:block; margin-bottom:4px; font-weight:600;">Password</label>
-      <input id="loginPassword" type="password" placeholder="••••••••"
-        style="width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; margin-bottom:20px; box-sizing:border-box;">
+    /* Input hint */
+    .smiles-hint {
+      font-size: 12px; color: var(--color-text-muted);
+      margin-top: 8px; line-height: 1.6;
+    }
+    .smiles-hint code {
+      font-family: monospace; background: rgba(26,93,66,0.07);
+      padding: 1px 5px; border-radius: 4px; font-size: 11px;
+    }
+    body.dark-mode .smiles-hint code { background: rgba(255,255,255,0.08); }
 
-      <button id="loginSubmit"
-        style="width:100%; padding:12px; background:#22c55e; color:#fff; border:none; border-radius:8px; font-size:16px; font-weight:600; cursor:pointer;">
-        Login
-      </button>
+    /* Structure preview */
+    .structure-preview {
+      margin-top: 12px; display: none;
+      padding: 12px; border-radius: 10px;
+      border: 1px solid var(--color-border);
+      background: var(--color-card);
+      display: none; align-items: center; gap: 14px;
+    }
+    .structure-preview img { width: 120px; height: 80px; object-fit: contain; border-radius: 6px; }
+    .structure-preview-info { font-size: 13px; color: var(--color-text-muted); }
+    .structure-preview-name { font-size: 14px; font-weight: 600; color: var(--color-text); margin-bottom: 3px; }
 
-      <p style="text-align:center; margin-top:16px; color:#555;">
-        Don't have an account?
-        <a href="#" id="showSignup" style="color:#16a34a; font-weight:600; text-decoration:none;">Sign up</a>
-      </p>
+    /* ── Medicine card ──────────────────────────────────────────────────── */
+    .medicine-card {
+      display: none; margin-top: 28px; width: 100%; max-width: 580px;
+      border-radius: 16px; overflow: hidden;
+      border: 2px solid var(--color-warning);
+      box-shadow: 0 8px 30px rgba(245,158,11,0.12);
+      animation: fadeIn 0.4s ease;
+    }
+    .medicine-card-header {
+      background: rgba(245,158,11,0.1); padding: 16px 22px;
+      border-bottom: 1px solid rgba(245,158,11,0.2);
+      display: flex; align-items: center; gap: 12px;
+    }
+    body.dark-mode .medicine-card-header { background: rgba(245,158,11,0.08); }
+    .medicine-card-icon { font-size: 24px; }
+    .medicine-card-title { font-size: 15px; font-weight: 700; color: #b45309; margin-bottom: 2px; }
+    body.dark-mode .medicine-card-title { color: #fcd34d; }
+    .medicine-card-subtitle { font-size: 12px; color: var(--color-text-muted); }
+    .medicine-card-body { padding: 18px 22px; background: var(--color-card); }
+    .medicine-compound-row {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+      padding: 12px 14px; border-radius: 10px;
+      background: rgba(26,93,66,0.05); border: 1px solid rgba(26,93,66,0.1);
+    }
+    body.dark-mode .medicine-compound-row { background: rgba(134,239,172,0.05); border-color: rgba(134,239,172,0.1); }
+    .medicine-compound-label { font-size: 11px; color: var(--color-text-muted); margin-bottom: 2px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+    .medicine-compound-name { font-size: 15px; font-weight: 700; color: var(--color-primary); }
+    body.dark-mode .medicine-compound-name { color: #86efac; }
+    .medicine-smiles { font-family: monospace; font-size: 11px; color: var(--color-text-muted); word-break: break-all; margin-top: 4px; }
+    .medicine-indication { font-size: 12px; color: var(--color-text-muted); line-height: 1.5; margin-bottom: 14px; font-style: italic; }
+    .medicine-structure-img { width: 130px; height: 90px; object-fit: contain; border-radius: 8px; border: 1px solid var(--color-border); }
+    .medicine-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn-classify-active {
+      flex: 2; min-width: 180px; padding: 12px 20px;
+      background: var(--color-primary); color: white;
+      border: none; border-radius: 10px; cursor: pointer;
+      font-size: 14px; font-weight: 700; letter-spacing: 0.3px;
+      transition: var(--transition);
+      box-shadow: 0 4px 14px rgba(26,93,66,0.25);
+    }
+    .btn-classify-active:hover { background: var(--color-primary-dark); transform: translateY(-1px); }
+    .btn-dismiss-medicine {
+      flex: 1; min-width: 100px; padding: 12px 16px;
+      background: transparent; color: var(--color-text-muted);
+      border: 1px solid var(--color-border); border-radius: 10px;
+      cursor: pointer; font-size: 13px; transition: var(--transition);
+    }
+    .btn-dismiss-medicine:hover { border-color: var(--color-primary); color: var(--color-primary); }
+
+    /* ── Not found card ─────────────────────────────────────────────────── */
+    .not-found-card {
+      display: none; margin-top: 28px; width: 100%; max-width: 580px;
+      border-radius: 16px; padding: 20px 22px;
+      border: 2px solid rgba(239,68,68,0.3);
+      background: rgba(239,68,68,0.04);
+      animation: fadeIn 0.4s ease;
+    }
+    .not-found-title { font-size: 14px; font-weight: 700; color: #dc2626; margin-bottom: 6px; }
+    body.dark-mode .not-found-title { color: #fca5a5; }
+    .not-found-msg { font-size: 13px; color: var(--color-text-muted); line-height: 1.6; margin-bottom: 14px; }
+    .suggestions-label { font-size: 12px; font-weight: 600; color: var(--color-text); margin-bottom: 8px; }
+    .suggestions-list { display: flex; flex-wrap: wrap; gap: 8px; }
+    .suggestion-chip {
+      padding: 6px 14px; border-radius: 20px; font-size: 13px; cursor: pointer;
+      border: 1px solid var(--color-border); background: var(--color-card);
+      color: var(--color-primary); font-weight: 500; transition: var(--transition);
+    }
+    .suggestion-chip:hover { background: var(--color-primary); color: white; border-color: var(--color-primary); }
+
+    /* ── Salt warning ───────────────────────────────────────────────────── */
+    .salt-warning {
+      display: none; margin-top: 10px; padding: 10px 14px;
+      border-radius: 8px; font-size: 12px; color: #92400e;
+      background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.3);
+      line-height: 1.5;
+    }
+    body.dark-mode .salt-warning { color: #fcd34d; background: rgba(245,158,11,0.07); }
+
+    /* ── Result box extra ───────────────────────────────────────────────── */
+    .result-resolved-name {
+      font-size: 12px; color: var(--color-text-muted); margin-top: 6px;
+      font-style: italic;
+    }
+    .result-input-type {
+      display: inline-block; margin-top: 8px; font-size: 11px;
+      padding: 2px 9px; border-radius: 20px; font-weight: 600;
+      background: rgba(26,93,66,0.08); color: var(--color-primary);
+      letter-spacing: 0.05em;
+    }
+
+    /* ── Examples ───────────────────────────────────────────────────────── */
+    .examples-section { margin-top: 24px; width: 100%; max-width: 580px; }
+    .examples-section h3 { font-size: 13px; color: var(--color-text-muted); margin-bottom: 10px; font-weight: 600; }
+    .example-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+    .example-btn {
+      padding: 7px 15px; border-radius: 20px; font-size: 13px;
+      border: 1px solid var(--color-border); background: var(--color-card);
+      color: var(--color-text); cursor: pointer; transition: var(--transition);
+      font-family: 'Montserrat', sans-serif; font-weight: 500;
+    }
+    .example-btn:hover { border-color: var(--color-primary); color: var(--color-primary); background: rgba(26,93,66,0.04); }
+
+    /* ── Mobile ─────────────────────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .results-layout { flex-direction: column; max-width: 580px; }
+      .results-layout .result-box { flex: none; max-width: 100%; width: 100%; }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="navbar">
+  <a href="/" class="logo">PhytoAI🪴</a>
+  <div class="nav-buttons">
+    <button onclick="history.back()">← Back</button>
+    <button id="authBtn" style="display:none;">Login/Signup🌱</button>
+  </div>
+</div>
+
+<div class="detect-container">
+
+  <h1>Natural Product Classifier 🧪</h1>
+  <p>Classify compounds by biological origin — Animal, Bacteria, Chromista, Fungi, or Plant.</p>
+
+  <!-- Input section -->
+  <div class="input-section" id="inputSection">
+    <label class="input-label" for="compoundInput">
+      Enter compound name or SMILES
+      <span class="input-type-badge" id="inputTypeBadge">type to begin</span>
+    </label>
+
+    <!-- Compound input -->
+    <textarea
+      id="compoundInput"
+      class="compound-input"
+      rows="2"
+      placeholder="e.g.  quercetin   or   CC(=O)Oc1ccccc1C(=O)O"
+      spellcheck="false"
+      autocomplete="off"
+    ></textarea>
+
+    <!-- Autocomplete dropdown -->
+    <div class="autocomplete-dropdown" id="autocompleteDropdown"></div>
+
+    <!-- Input hint -->
+    <div class="smiles-hint">
+      💡 Enter a <strong>compound name</strong> (e.g. quercetin, caffeine, penicillin G)
+      or a <strong>SMILES string</strong> (e.g. <code>CC(=O)Oc1ccccc1C(=O)O</code>).
+      Also accepts <strong>CAS numbers</strong> and <strong>InChIKey</strong>.
+      <br><a href="https://pubchem.ncbi.nlm.nih.gov/" target="_blank" style="color:var(--color-primary);">Find SMILES on PubChem →</a>
     </div>
 
-    <!-- SIGNUP FORM -->
-    <div id="signupForm" style="display:none;">
-      <h2 style="margin-bottom:20px; text-align:center;">🌱 Create Account</h2>
+    <!-- Structure preview (shown after name resolves) -->
+    <div class="structure-preview" id="structurePreview" style="display:none;">
+      <img id="structureImg" src="" alt="2D structure">
+      <div>
+        <div class="structure-preview-name" id="structurePreviewName"></div>
+        <div class="structure-preview-info" id="structurePreviewInfo"></div>
+      </div>
+    </div>
 
-      <label style="display:block; margin-bottom:4px; font-weight:600;">Full Name</label>
-      <input id="signupName" type="text" placeholder="Jane Doe"
-        style="width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; margin-bottom:14px; box-sizing:border-box;">
+    <!-- Salt warning -->
+    <div class="salt-warning" id="saltWarning"></div>
+  </div>
 
-      <label style="display:block; margin-bottom:4px; font-weight:600;">Email</label>
-      <input id="signupEmail" type="email" placeholder="you@example.com"
-        style="width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; margin-bottom:14px; box-sizing:border-box;">
+  <!-- Example buttons -->
+  <div class="examples-section">
+    <h3>Try an example:</h3>
+    <div class="example-buttons">
+      <button class="example-btn" data-input="quercetin">🌿 Quercetin</button>
+      <button class="example-btn" data-input="caffeine">☕ Caffeine</button>
+      <button class="example-btn" data-input="penicillin G">🦠 Penicillin G</button>
+      <button class="example-btn" data-input="cholesterol">🐾 Cholesterol</button>
+      <button class="example-btn" data-input="CC(=O)Oc1ccccc1C(=O)O" data-type="smiles">💊 Aspirin SMILES</button>
+      <button class="example-btn" data-input="Tylenol" data-demo="medicine">⚠️ Tylenol (medicine)</button>
+    </div>
+  </div>
 
-      <label style="display:block; margin-bottom:4px; font-weight:600;">Password</label>
-      <input id="signupPassword" type="password" placeholder="At least 6 characters"
-        style="width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; margin-bottom:20px; box-sizing:border-box;">
+  <!-- Action buttons -->
+  <div class="action-buttons">
+    <button class="reset-btn" id="resetBtn">Reset</button>
+    <button class="detect-btn" id="classifyBtn">Classify Compound</button>
+  </div>
 
-      <button id="signupSubmit"
-        style="width:100%; padding:12px; background:#22c55e; color:#fff; border:none; border-radius:8px; font-size:16px; font-weight:600; cursor:pointer;">
-        Sign Up
-      </button>
+  <!-- Loader -->
+  <div class="loader-container" id="loaderContainer"><div class="loader"></div></div>
 
-      <p style="text-align:center; margin-top:16px; color:#555;">
-        Already have an account?
-        <a href="#" id="showLogin" style="color:#16a34a; font-weight:600; text-decoration:none;">Login</a>
-      </p>
+  <!-- Medicine detected card -->
+  <div class="medicine-card" id="medicineCard">
+    <div class="medicine-card-header">
+      <div class="medicine-card-icon">⚠️</div>
+      <div>
+        <div class="medicine-card-title">This is a medicine / pharmaceutical</div>
+        <div class="medicine-card-subtitle" id="medicineCardSubtitle">
+          Medicines are formulations, not pure compounds — classifying them directly may give misleading results.
+        </div>
+      </div>
+    </div>
+    <div class="medicine-card-body">
+      <div class="medicine-compound-row">
+        <div style="flex:1;">
+          <div class="medicine-compound-label">Active compound</div>
+          <div class="medicine-compound-name" id="medicineActiveCompound">—</div>
+          <div class="medicine-smiles" id="medicineSmiles">—</div>
+        </div>
+        <img class="medicine-structure-img" id="medicineStructureImg" src="" alt="" style="display:none;">
+      </div>
+      <div class="medicine-indication" id="medicineIndication" style="display:none;"></div>
+      <div class="medicine-actions">
+        <button class="btn-classify-active" id="btnClassifyActive">
+          Classify active compound →
+        </button>
+        <button class="btn-dismiss-medicine" id="btnDismissMedicine">Enter manually</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Not found card -->
+  <div class="not-found-card" id="notFoundCard">
+    <div class="not-found-title">❌ Compound not found</div>
+    <div class="not-found-msg" id="notFoundMsg"></div>
+    <div id="suggestionsArea" style="display:none;">
+      <div class="suggestions-label">Did you mean:</div>
+      <div class="suggestions-list" id="suggestionsList"></div>
+    </div>
+  </div>
+
+  <!-- Results layout -->
+  <div class="results-layout" id="resultsLayout">
+
+    <!-- LEFT: Classification result -->
+    <div class="result-box" id="resultBox">
+      <h2>Classification Result</h2>
+      <div id="resultClass"></div>
+      <div class="result-resolved-name" id="resultResolvedName"></div>
+      <span class="result-input-type" id="resultInputType" style="display:none;"></span>
+      <div class="confidence-container">
+        <div id="resultConfidenceText"></div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="confidenceBar"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Probabilities -->
+    <div class="probabilities-column">
+      <div class="probabilities-card" id="probabilitiesCard">
+        <div class="probabilities-header">
+          <h3>Class Probabilities</h3>
+          <span class="class-badge" id="classBadge"></span>
+        </div>
+        <div class="probabilities-description" id="probabilitiesDesc">
+          Confidence scores across all five natural product origin classes.
+        </div>
+        <div class="prob-classes" id="probClasses"></div>
+      </div>
     </div>
 
   </div>
+
 </div>
+
+{% include "components/auth_modal.html" %}
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+<script src="/static/js/auth.js"></script>
+<script src="/static/js/theme.js"></script>
+<script src="/static/js/drug_classification.js"></script>
+
+</body>
+</html>

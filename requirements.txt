@@ -4,3 +4,9 @@ Flask
 Werkzeug
 Pillow
 supabase
+rdkit
+joblib
+numpy
+lightgbm
+opencv-python
+scikit-learn
