@@ -1,12 +1,15 @@
 from backend.utils.supabase_client import supabase
 from flask import Flask, render_template, request, jsonify
 import os
+import uuid
 
 from backend.routes.profile_routes import profile_bp
 from backend.config import Config
 from backend.routes.prediction_routes import prediction_bp
 from backend.routes.prevention_routes import prevention_bp
 from backend.routes.history_routes import history_bp
+
+SERVER_RUN_ID = str(uuid.uuid4())
 
 print("URL:", os.getenv("SUPABASE_URL"))
 print("KEY:", os.getenv("SUPABASE_KEY"))
@@ -33,6 +36,14 @@ app.register_blueprint(history_bp, url_prefix="/api")
 @app.route('/')
 def home():
     return render_template('homepage.html')
+
+@app.route("/api/status", methods=["GET"])
+def api_status():
+    return jsonify({
+        "status": "ok",
+        "run_id": SERVER_RUN_ID
+    }), 200
+
 
 @app.route('/plant_detection')
 @app.route('/plant_detection.html')

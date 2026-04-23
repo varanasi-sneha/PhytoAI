@@ -213,14 +213,11 @@ async function loadProfile() {
             <div>
                 <button class="primary" onclick="updateName()">✓ Update Name</button>
             </div>
-            <hr style="margin: 32px 0; border: none; border-top: 1px solid var(--color-border);">
             <div>
                 <label style="display: block; font-weight: 600; margin-bottom: 16px; color: var(--color-primary);">Theme Preference</label>
-                <button class="secondary" onclick="toggleThemeAndLog()">🌓 Toggle Dark Mode</button>
+                <button class="secondary" onclick="toggleThemeAndLog()">🌓 Switch Theme</button>
             </div>
-            <hr style="margin: 32px 0; border: none; border-top: 1px solid var(--color-border);">
             <div>
-                <label style="display: block; font-weight: 600; margin-bottom: 16px; color: #ef4444;">Danger Zone</label>
                 <button class="danger-btn" onclick="logout()">🚪 Logout</button>
             </div>
         </div>

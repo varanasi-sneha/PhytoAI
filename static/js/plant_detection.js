@@ -10,11 +10,13 @@ const imageInput           = document.getElementById("imageInput");
 const previewImage         = document.getElementById("previewImage");
 const detectBtn            = document.getElementById("detectBtn");
 const resetBtn             = document.getElementById("resetBtn");
-const resultsLayout        = document.getElementById("resultsLayout");
+const resultBox            = document.getElementById("resultBox");
 const loaderContainer      = document.getElementById("loaderContainer");
 const resultDisease        = document.getElementById("resultDisease");
 const resultConfidenceText = document.getElementById("resultConfidenceText");
 const confidenceBar        = document.getElementById("confidenceBar");
+const togglePreventionBtn  = document.getElementById("togglePreventionBtn");
+
 
 /* ── Camera refs ─────────────────────────────────────────── */
 const openCameraBtn  = document.getElementById("openCameraBtn");
@@ -34,18 +36,6 @@ const severityColors = {
   high:     '#ef4444',
   critical: '#7f1d1d',
 };
-
-/* ─────────────────────────────────────────────────────────
-   LAYOUT HELPERS
-───────────────────────────────────────────────────────── */
-function showResultsLayout() {
-  resultsLayout.style.display = "flex";
-}
-
-function hideResultsLayout() {
-  resultsLayout.style.display = "none";
-  hidePrevention();
-}
 
 /* ─────────────────────────────────────────────────────────
    AUTH HELPERS
@@ -76,7 +66,8 @@ function handleFileSelect(file) {
     previewImage.src = URL.createObjectURL(file);
     previewImage.style.display = "block";
     resetBtn.style.display = "block";
-    hideResultsLayout();
+    resultBox.style.display = "none";
+
     if (cameraSection) cameraSection.style.display = "none";
   } else if (file) {
     alert("Please upload a valid image file (JPG, PNG, etc.)");
@@ -125,8 +116,14 @@ resetBtn.addEventListener("click", (e) => {
   previewImage.src = "";
   previewImage.style.display = "none";
   resetBtn.style.display = "none";
-  hideResultsLayout();
+  resultBox.style.display = "none";
+  togglePreventionBtn.style.display = "none";
+  
+  document.getElementById("preventionCard").style.display = "none";
+  document.getElementById("resultsLayout").style.display = "none";
+
   if (cameraSection) cameraSection.style.display = "block";
+  hidePrevention();
 });
 
 /* ─────────────────────────────────────────────────────────
@@ -169,7 +166,8 @@ detectBtn.addEventListener("click", async () => {
 
   detectBtn.disabled = true;
   loaderContainer.style.display = "block";
-  hideResultsLayout();
+  resultBox.style.display = "none";
+  hidePrevention();
 
   const formData = new FormData();
   formData.append("image", selectedFile);
@@ -178,6 +176,7 @@ detectBtn.addEventListener("click", async () => {
     const { data: { session } } = await window.supabaseClient.auth.getSession();
     const token = session?.access_token;
 
+    console.log("🚀 Sending prediction request...");
     const response = await fetch("/api/predict/", {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
@@ -191,17 +190,43 @@ detectBtn.addEventListener("click", async () => {
       data = { error: "Unexpected server response. Please try again." };
     }
 
-    // Show the two-column layout in all cases (success or error)
-    showResultsLayout();
+    
+    console.log("STATUS:", response.status);
+    console.log("DATA:", data);
+    if (data.valid) {
+      // ── Valid prediction ────────────────────────────── 
 
-    if (response.ok) {
-      // ── Valid prediction ──────────────────────────────
-      const label = data.display_name || data.disease || "Unknown";
-      resultDisease.innerText        = `Detected: ${label}`;
+      resultBox.style.display = "block";
+      document.getElementById("resultsLayout").style.display = "block"; // show layout
+
+      togglePreventionBtn.style.display = "inline-block"; // show button 
+ 
+      const label = data.display_name || data.disease || "Unknown"; 
+      if (!data.valid) return; 
+      resultDisease.innerText = `Detected: ${label}`;
       resultConfidenceText.innerText = `Confidence: ${data.confidence_percentage}`;
-      confidenceBar.style.width      = `${(data.confidence * 100).toFixed(1)}%`;
+      confidenceBar.style.display = "block";
+      confidenceBar.style.width = data.confidence ? `${(data.confidence * 100).toFixed(1)}%` : "0%";
 
-      fetchPrevention(data.disease);
+      // Fetch prevention using raw disease name
+      togglePreventionBtn.onclick = async () => {
+        const modal = document.getElementById("preventionModal");
+        const modalContent = document.getElementById("modalContent");
+
+        modal.style.display = "flex";
+
+        // MOVE CARD INTO MODAL
+        const card = document.getElementById("preventionCard");
+        modalContent.appendChild(card);
+
+        document.getElementById("preventionLoader").style.display = "block";
+        
+        if (data.prevention) {
+          renderPrevention(data.prevention);
+        } else {
+          await fetchPrevention(data.disease);
+        }
+      };
 
     } else {
       // ── Handle specific error types from new model ────
@@ -211,7 +236,7 @@ detectBtn.addEventListener("click", async () => {
         showError("📷 Image Too Unclear",
           data.message || "The image is too blurry. Please upload a clearer photo.");
 
-      } else if (errorType === "not_a_spinach_leaf") {
+      } else if (errorType === "not_a_spinach_leaf" || errorType === "not_spinach") {
         showError("🌿 Not a Spinach Leaf",
           `${data.message || "This doesn't appear to be a Malabar Spinach leaf."}\n\nConfidence: ${data.confidence_percentage || "N/A"}`);
 
@@ -314,5 +339,17 @@ async function fetchPrevention(diseaseName) {
     console.error("Prevention fetch error:", err);
     document.getElementById("preventionLoader").textContent =
       "❌ Could not load prevention data.";
+    document.getElementById("resultsLayout").style.display = "block";
+    showError( "❌ Network Error", "Unable to reach the server. Please check your connection and try again." );
   }
 }
+
+document.getElementById("closePreventionModal").onclick = () => {
+  document.getElementById("preventionModal").style.display = "none"; 
+}; 
+
+document.getElementById("preventionModal").addEventListener("click", (e) => {
+  if (e.target.id === "preventionModal") {
+    e.target.style.display = "none";
+  } 
+});

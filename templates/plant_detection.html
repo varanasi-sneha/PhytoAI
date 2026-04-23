@@ -9,34 +9,28 @@
   <link rel="stylesheet" href="/static/css/theme.css">
 
   <style>
+    #preventionModal > div::-webkit-scrollbar {
+      display: none;
+    }
     /* ── Two-column results layout ── */
     .results-layout {
-      display: none; /* shown by JS */
-      flex-direction: row;
-      align-items: flex-start;
-      gap: 32px;
+      display: none;
+      align-items: center;
       width: 100%;
-      max-width: 1100px;
-      margin-top: 50px;
+      margin: 50px auto;
+      justify-content: center;
     }
 
     /* Left: result box takes fixed width */
     .results-layout .result-box {
-      flex: 0 0 360px;
-      max-width: 360px;
+      max-width: 720px;
       margin-top: 0; /* reset margin from plant_detection.css */
-      display: block !important; /* always visible once layout shows */
-    }
-
-    /* Right: prevention column fills remaining space */
-    .prevention-column {
-      flex: 1;
-      min-width: 0;
     }
 
     /* Prevention card — full width within its column */
     .prevention-card {
       width: 100%;
+      margin: 30px;
       border-radius: 20px;
       overflow: hidden;
       box-shadow: 0 16px 50px var(--color-shadow);
@@ -47,7 +41,7 @@
     .prevention-loader {
       text-align: center;
       padding: 30px 32px;
-      color: var(--color-text-muted);
+      color: white;
       font-size: 14px;
       display: none;
       font-weight: 500;
@@ -81,7 +75,7 @@
 
     .prevention-description {
       padding: 20px 32px;
-      background: rgba(26, 93, 66, 0.02);
+      background: white;
       color: var(--color-text);
       font-size: 14px;
       line-height: 1.6;
@@ -218,32 +212,111 @@
       <div id="resultDisease"></div>
       <div class="confidence-container">
         <div id="resultConfidenceText"></div>
-        <div class="progress-bar-bg">
-          <div class="progress-bar-fill" id="confidenceBar"></div>
+
+        <div style="display:flex; align-items:center; gap:12px; margin-top:10px;">
+          
+          <div class="progress-bar-bg" style="flex:1;">
+            <div class="progress-bar-fill" id="confidenceBar"></div>
+          </div>
+
+          <!-- 🔥 NEW BUTTON -->
+          <button id="togglePreventionBtn" style="
+            padding:8px 14px;
+            border:none;
+            border-radius:8px;
+            background:#1a5d42;
+            color:white;
+            font-size:12px;
+            cursor:pointer;
+            display:none;
+          ">
+            Prevention / Cure
+          </button>
+
         </div>
       </div>
     </div>
+  </div>
 
-    <!-- RIGHT: Prevention & treatment -->
-    <div class="prevention-column">
-      <div class="prevention-loader" id="preventionLoader">⏳ Loading prevention measures...</div>
+</div>
+
+<div id="preventionModal" style="
+  display:none;
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.4);
+  justify-content:center;
+  align-items:center;
+  z-index:9999;
+">
+
+<div style="
+  background:rgba(0,0,0,0.4);
+  width:90%;
+  max-width:700px;
+  max-height:90vh;          /* 🔥 limits height */
+  overflow-y:auto;          /* 🔥 enables scroll */
+  border-radius:16px;
+  position:relative;
+
+  scrollbar-width: none;      /* Firefox */
+  -ms-overflow-style: none;   /* IE/Edge */
+">
+
+    <button id="closePreventionModal" style="
+      position:absolute;
+      top:10px;
+      right:10px;
+      border:none;
+      background:none;
+      font-size:25px;
+      cursor:pointer;
+      color:white;
+    ">✖</button>
+
+    <!-- WE WILL MOVE preventionCard HERE -->
+    <div id="modalContent">
+      <div class="prevention-loader" id="preventionLoader"></div>
       <div class="prevention-card" id="preventionCard">
+
         <div class="prevention-header" id="preventionHeader">
           <h3 id="preventionTitle">Prevention & Treatment</h3>
           <span class="severity-badge" id="severityBadge"></span>
         </div>
+
         <div class="prevention-description" id="preventionDesc"></div>
+
         <div class="prevention-sections">
-          <div class="prevention-section"><h4>🛡️ Prevention Measures</h4><ul id="preventionList"></ul></div>
-          <div class="prevention-section"><h4>💊 Treatment Options</h4><ul id="treatmentList"></ul></div>
-          <div class="prevention-section"><h4>🌿 Organic Solutions</h4><ul id="organicList"></ul></div>
-          <div class="prevention-section"><h4>🧪 Chemical Solutions</h4><ul id="chemicalList"></ul></div>
+
+          <div class="prevention-section">
+            <h4>🛡️ Prevention Measures</h4>
+            <ul id="preventionList"></ul>
+          </div>
+
+          <div class="prevention-section">
+            <h4>💊 Treatment Options</h4>
+            <ul id="treatmentList"></ul>
+          </div>
+
+          <div class="prevention-section">
+            <h4>🌿 Organic Solutions</h4>
+            <ul id="organicList"></ul>
+          </div>
+
+          <div class="prevention-section">
+            <h4>🧪 Chemical Solutions</h4>
+            <ul id="chemicalList"></ul>
+          </div>
+
         </div>
+
       </div>
     </div>
 
   </div>
-
 </div>
 
 {% include "components/auth_modal.html" %}
