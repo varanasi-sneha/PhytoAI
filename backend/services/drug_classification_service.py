@@ -298,7 +298,17 @@ class DrugClassificationService:
         if margins.max() >= 0:
             return int(margins.argmax()), True
         return int(probs.argmax()), False
-
+    @classmethod
+    def is_inorganic(cls, smiles: str) -> bool:
+        """Detects inorganic compounds based on absence of carbon."""
+        try:
+            mol = Chem.MolFromSmiles(smiles)
+            if mol is None:
+                return False
+            atoms = [atom.GetSymbol() for atom in mol.GetAtoms()]
+            return "C" not in atoms  # No carbon → inorganic
+        except:
+            return False
     @classmethod
     def predict(cls, smiles: str) -> dict:
         """Main classification logic for structural inputs."""
@@ -338,7 +348,27 @@ class DrugClassificationService:
 
         text = user_input.strip()
         itype = cls.detect_input_type(text)
-
+        # ── Special Case: Known Biological Overrides ──
+        LOW = text.lower()
+        # Heparin & all its salts/forms → Animal
+        if "heparin" in LOW:
+            return {
+                "status": "classified",
+                "input_type": "override",
+                "resolved_name": text,
+                "class_name": "Animal-derived",
+                "class_short": "Animal",
+                "confidence": 0.92,
+                "confidence_percentage": 92.0,
+                "probabilities": {
+                    "Animal-derived": 0.92,
+                    "Bacteria-derived": 0.03,
+                    "Chromista-derived": 0.01,
+                    "Fungi-derived": 0.01,
+                    "Plant-derived": 0.03
+                },
+                "message": "Rule-based classification: Heparin compounds are known to be animal-derived."
+            }
         # 1. Handle Direct SMILES
         if itype == "smiles":
             res = cls.predict(text)
@@ -365,6 +395,17 @@ class DrugClassificationService:
                 "smiles": resolved["smiles"],
                 "drug_indication": resolved["drug_indication"],
                 "message": f"'{text}' is a pharmaceutical compound (Base: {resolved['active_compound']})."
+            }
+
+        # ── Inorganic Check ──
+        if cls.is_inorganic(resolved["smiles"]):
+            return {
+                "status": "inorganic",
+                "input_type": "compound_name",
+                "resolved_name": resolved["canonical_name"],
+                "smiles": resolved["smiles"],
+                "message": "Detected as inorganic compound (no carbon present).",
+                "classification": "Inorganic"
             }
 
         # 4. Classified Result for Resolved Names
