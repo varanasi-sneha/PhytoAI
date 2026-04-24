@@ -20,11 +20,22 @@ function showTab(tab) {
     }
 }
 
-// ---------- UPLOAD CLICK ----------
-function uploadClick() {
-    const input = document.getElementById("uploadInput");
-    if (input) input.click();
-    else alert("Upload input not found");
+// ---------- DELETE PHOTO ----------
+async function deletePhoto() {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session) return;
+    if (!confirm("Delete your profile photo?")) return;
+    const path = `${session.user.id}.jpg`;
+    const { error } = await supabaseClient
+        .storage
+        .from("profile_pics")
+        .remove([path]);
+    if (error) {
+        alert("Delete failed: " + error.message);
+        return;
+    }
+    alert("✓ Photo deleted");
+    loadProfile();
 }
 
 // ---------- CLEAR HISTORY ----------
@@ -65,7 +76,10 @@ async function loadProfile() {
     }
 
     // -------- NAME --------
-    let name = session.user.user_metadata?.name || session.user.user_metadata?.full_name;
+    let name =
+        session.user.user_metadata?.name ||
+        session.user.user_metadata?.full_name ||
+        "User";
     if (!name || name.trim() === "") {
         name = session.user.email.split("@")[0];
     }
@@ -236,6 +250,86 @@ async function updateName() {
     if (error) { alert("Update failed: " + error.message); return; }
     alert("✓ Name updated successfully!");
     loadProfile();
+}
+
+function togglePhotoMenu() {
+    const menu = document.getElementById("photoMenu");
+    menu.style.display = menu.style.display === "block" ? "none" : "block";
+}
+
+// close on outside click
+document.addEventListener("click", (e) => {
+    const menu = document.getElementById("photoMenu");
+    if (!e.target.closest("#photoMenu") && !e.target.closest("button")) {
+        menu.style.display = "none";
+    }
+});
+
+let cameraStream = null;
+
+async function openCamera() {
+    const box = document.getElementById("cameraBox");
+    const video = document.getElementById("cameraVideo");
+    try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "environment" }
+        });
+        video.srcObject = cameraStream;
+        box.style.display = "flex";
+    } catch (err) {
+        alert("Camera not accessible");
+        console.error(err);
+    }
+    document.getElementById("photoMenu").style.display = "none";
+}
+
+function openGallery() {
+    const input = document.getElementById("uploadInput");
+
+    // remove capture so it opens gallery
+    input.removeAttribute("capture");
+
+    input.click();
+
+    document.getElementById("photoMenu").style.display = "none";
+}
+
+function capturePhoto() {
+    const video = document.getElementById("cameraVideo");
+    const canvas = document.getElementById("cameraCanvas");
+
+    const ctx = canvas.getContext("2d");
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    ctx.drawImage(video, 0, 0);
+
+    canvas.toBlob((blob) => {
+        const file = new File([blob], "camera.jpg", { type: "image/jpeg" });
+
+        const input = document.getElementById("uploadInput");
+
+        // 🔥 trick: manually assign file
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        input.files = dataTransfer.files;
+
+        // 🔥 trigger your existing upload logic
+        input.dispatchEvent(new Event("change"));
+    });
+
+    closeCamera();
+}
+
+function closeCamera() {
+    const box = document.getElementById("cameraBox");
+
+    if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+    }
+
+    box.style.display = "none";
 }
 
 // ---------- FILE UPLOAD (JPEG ONLY) ----------

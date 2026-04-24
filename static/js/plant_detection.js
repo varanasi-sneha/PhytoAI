@@ -230,6 +230,12 @@ detectBtn.addEventListener("click", async () => {
 
     } else {
       // ── Handle specific error types from new model ────
+
+      resultBox.style.display = "block";
+      document.getElementById("resultsLayout").style.display = "block";
+      togglePreventionBtn.style.display = "none";
+      confidenceBar.style.display = "none";
+
       const errorType = data.error;
 
       if (errorType === "unclear_image") {
