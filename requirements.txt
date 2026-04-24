@@ -9,3 +9,9 @@ opencv-python
 numpy
 scikit-learn
 scipy
+rdkit
+joblib
+numpy
+lightgbm
+opencv-python
+scikit-learn

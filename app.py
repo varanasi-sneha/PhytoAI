@@ -17,6 +17,7 @@ from backend.config import Config
 from backend.routes.prediction_routes import prediction_bp
 from backend.routes.prevention_routes import prevention_bp
 from backend.routes.history_routes import history_bp
+from backend.routes.drug_classification_routes import drug_classification_bp
 
 SERVER_RUN_ID = str(uuid.uuid4())
 
@@ -52,6 +53,7 @@ logger.info(f"✓ Upload folder ready: {os.path.abspath(app.config['UPLOAD_FOLDE
 # Register API blueprints
 app.register_blueprint(profile_bp, url_prefix="/api")
 app.register_blueprint(prediction_bp, url_prefix='/api/predict')
+app.register_blueprint(drug_classification_bp, url_prefix='/api/drug')
 app.register_blueprint(prevention_bp)
 app.register_blueprint(history_bp, url_prefix="/api")
 logger.info("✓ All blueprints registered")
