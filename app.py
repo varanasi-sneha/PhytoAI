@@ -1,7 +1,16 @@
 from backend.utils.supabase_client import supabase
 from flask import Flask, render_template, request, jsonify
+from flask_cors import CORS
 import os
 import uuid
+import logging
+
+# ── Configure logging ─────────────────────────────────────────────────────────
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s [%(levelname)s] %(name)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 from backend.routes.profile_routes import profile_bp
 from backend.config import Config
@@ -11,22 +20,41 @@ from backend.routes.history_routes import history_bp
 
 SERVER_RUN_ID = str(uuid.uuid4())
 
-print("URL:", os.getenv("SUPABASE_URL"))
-print("KEY:", os.getenv("SUPABASE_KEY"))
-# Initialize Flask App
+print("=" * 80)
+print("🌱 PhytoAI Plant Disease Detection - Starting")
+print("=" * 80)
+logger.info(f"Server RUN_ID: {SERVER_RUN_ID}")
+logger.info(f"Supabase URL: {os.getenv('SUPABASE_URL', 'using default')}")
 
+# Initialize Flask App
 app = Flask(__name__)
 app.config.from_object(Config)
-app.register_blueprint(profile_bp, url_prefix="/api")
-# Ensure upload directory exists
 
+# ── Enable CORS for cross-origin requests with proper config for file uploads ──
+CORS(
+    app,
+    resources={r"/api/*": {
+        "origins": "*",
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "expose_headers": ["Content-Type"],
+        "supports_credentials": False,
+        "max_age": 3600
+    }},
+    send_wildcard=False
+)
+logger.info("✓ CORS configured for /api/* endpoints")
+
+# Ensure upload directory exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+logger.info(f"✓ Upload folder ready: {os.path.abspath(app.config['UPLOAD_FOLDER'])}")
 
 # Register API blueprints
-
+app.register_blueprint(profile_bp, url_prefix="/api")
 app.register_blueprint(prediction_bp, url_prefix='/api/predict')
 app.register_blueprint(prevention_bp)
 app.register_blueprint(history_bp, url_prefix="/api")
+logger.info("✓ All blueprints registered")
 # ======================
 
 # FRONTEND ROUTES
