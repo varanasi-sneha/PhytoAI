@@ -1,0 +1,74 @@
+/* Reset and Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background: linear-gradient(135deg, #1a2a1a, #2d5a27); /* Nature-themed gradient */
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+}
+
+.welcome-container {
+    text-align: center;
+    animation: fadeIn 1.2s ease-in-out;
+}
+
+.app-title {
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 2rem;
+    letter-spacing: 2px;
+}
+
+.button-group {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.btn {
+    padding: 12px 40px;
+    font-size: 1rem;
+    border-radius: 25px;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.2s, background-color 0.3s;
+    font-weight: 600;
+}
+
+.primary {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.secondary {
+    background-color: transparent;
+    border: 2px solid white;
+    color: white;
+}
+
+/* Hover Effects */
+.btn:hover {
+    transform: scale(1.05);
+}
+
+.primary:hover {
+    background-color: #45a049;
+}
+
+.secondary:hover {
+    background-color: white;
+    color: #2d5a27;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
