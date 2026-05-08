@@ -64,7 +64,12 @@ logger.info("✓ All blueprints registered")
 # ======================
 
 @app.route('/')
-def home():
+def welcome():
+    return render_template('welcome.html')
+
+# Add this alongside your other frontend routes
+@app.route('/homepage')
+def homepage():
     return render_template('homepage.html')
 
 @app.route("/api/status", methods=["GET"])
