@@ -157,4 +157,25 @@ class ApiService {
 
     return decoded;
   }
+  Future<List<dynamic>> getDrugAutocomplete(
+      String query) async {
+
+    final url = Uri.parse(
+      '$baseUrl/api/drug/autocomplete?q=$query',
+    );
+
+    final response = await http.get(
+      url,
+      headers: _getAuthHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+
+      final data = json.decode(response.body);
+
+      return data['suggestions'] ?? [];
+    }
+
+    return [];
+  }
 }

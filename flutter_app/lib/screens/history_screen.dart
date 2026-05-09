@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -50,7 +51,58 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
+    return Column(
+  children: [
+
+    Padding(
+      padding: const EdgeInsets.fromLTRB(
+          20, 16, 20, 8),
+
+      child: Row(
+        mainAxisAlignment:
+            MainAxisAlignment.spaceBetween,
+
+        children: [
+
+          const Text(
+            'Prediction History',
+
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight:
+                  FontWeight.bold,
+            ),
+          ),
+
+          TextButton.icon(
+
+            icon: Icon(
+              Icons.delete_sweep,
+              color:
+                  Colors.red.shade700,
+            ),
+
+            label: Text(
+              'Clear All',
+
+              style: TextStyle(
+                color:
+                    Colors.red.shade700,
+                fontWeight:
+                    FontWeight.bold,
+              ),
+            ),
+
+            onPressed: () {
+              _showClearAllPopup();
+            },
+          ),
+        ],
+      ),
+    ),
+
+    Expanded(
+      child: RefreshIndicator(
       onRefresh: _loadHistory,
       child: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -80,7 +132,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       itemCount: _history.length,
                       itemBuilder: (context, index) {
                         final item = _history[index];
-                        return Container(
+                        return GestureDetector(
+
+                        onLongPress: () {
+                          _showDeletePopup(item);
+                        },
+
+                        child: Container(
                           margin: const EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 10,
@@ -234,9 +292,290 @@ class _HistoryScreenState extends State<HistoryScreen> {
                               ),
                             ],
                           ),
+                        ),
                         );
                       },
                     ),
+            ),
+          ),
+        ],
+      );
+  }
+  void _showDeletePopup(
+      HistoryItem item) {
+
+    showGeneralDialog(
+
+      context: context,
+
+      barrierDismissible: true,
+
+      barrierLabel: 'Delete',
+
+      barrierColor:
+          Colors.black.withOpacity(0.3),
+
+      transitionDuration:
+          const Duration(milliseconds: 250),
+
+      pageBuilder:
+          (_, __, ___) {
+
+        return BackdropFilter(
+
+          filter: ImageFilter.blur(
+            sigmaX: 8,
+            sigmaY: 8,
+          ),
+
+          child: Center(
+
+            child: Container(
+
+              margin:
+                  const EdgeInsets.all(24),
+
+              padding:
+                  const EdgeInsets.all(24),
+
+              decoration: BoxDecoration(
+
+                color:
+                    Colors.white.withOpacity(0.92),
+
+                borderRadius:
+                    BorderRadius.circular(28),
+
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black
+                        .withOpacity(0.08),
+                    blurRadius: 20,
+                  ),
+                ],
+              ),
+
+              child: Column(
+
+                mainAxisSize:
+                    MainAxisSize.min,
+
+                children: [
+
+                  Container(
+                    padding:
+                        const EdgeInsets.all(18),
+
+                    decoration: BoxDecoration(
+                      color:
+                          Colors.red.shade50,
+                      shape: BoxShape.circle,
+                    ),
+
+                    child: Icon(
+                      Icons.delete_rounded,
+                      color:
+                          Colors.red.shade700,
+                      size: 36,
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  const Text(
+                    'Delete History?',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight:
+                          FontWeight.bold,
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  Text(
+                    item.displayName
+                        .replaceAll('-', ' ')
+                        .replaceAll('_', ' '),
+
+                    textAlign: TextAlign.center,
+
+                    style: TextStyle(
+                      fontSize: 16,
+                      color:
+                          Colors.grey.shade700,
+                    ),
+                  ),
+
+                  const SizedBox(height: 28),
+
+                  Row(
+                    children: [
+
+                      Expanded(
+                        child: OutlinedButton(
+
+                          style:
+                              OutlinedButton.styleFrom(
+                            padding:
+                                const EdgeInsets.symmetric(
+                              vertical: 16,
+                            ),
+
+                            shape:
+                                RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(
+                                      16),
+                            ),
+                          ),
+
+                          onPressed: () {
+                            Navigator.pop(context);
+                          },
+
+                          child:
+                              const Text('Cancel'),
+                        ),
+                      ),
+
+                      const SizedBox(width: 14),
+
+                      Expanded(
+                        child: ElevatedButton.icon(
+
+                          icon: const Icon(
+                            Icons.delete,
+                          ),
+
+                          label: const Text(
+                            'Delete',
+                          ),
+
+                          style:
+                              ElevatedButton.styleFrom(
+                            backgroundColor:
+                                Colors.red.shade600,
+
+                            foregroundColor:
+                                Colors.white,
+
+                            padding:
+                                const EdgeInsets.symmetric(
+                              vertical: 16,
+                            ),
+
+                            shape:
+                                RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(
+                                      16),
+                            ),
+                          ),
+
+                          onPressed: () async {
+
+                            Navigator.pop(context);
+
+                            await _deleteHistoryItem(
+                                item);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+  Future<void> _deleteHistoryItem(
+      HistoryItem item) async {
+
+    setState(() {
+
+      _history.remove(item);
+    });
+    // connect backend delete API
+  }
+  void _showClearAllPopup() {
+
+    showDialog(
+
+      context: context,
+
+      builder: (_) {
+
+        return AlertDialog(
+
+          shape:
+              RoundedRectangleBorder(
+            borderRadius:
+                BorderRadius.circular(24),
+          ),
+
+          title: Row(
+            children: [
+
+              Icon(
+                Icons.warning_rounded,
+                color:
+                    Colors.red.shade700,
+              ),
+
+              const SizedBox(width: 10),
+
+              const Text(
+                'Clear History',
+              ),
+            ],
+          ),
+
+          content: const Text(
+            'Delete all prediction history permanently?',
+          ),
+
+          actions: [
+
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+
+              child:
+                  const Text('Cancel'),
+            ),
+
+            ElevatedButton(
+
+              style:
+                  ElevatedButton.styleFrom(
+                backgroundColor:
+                    Colors.red.shade600,
+
+                foregroundColor:
+                    Colors.white,
+              ),
+
+              onPressed: () {
+
+                setState(() {
+
+                  _history.clear();
+                });
+
+                Navigator.pop(context);
+              },
+
+              child:
+                  const Text('Delete All'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

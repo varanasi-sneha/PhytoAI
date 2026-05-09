@@ -3,12 +3,18 @@ class PredictionResult {
   final String displayName;
   final double confidence;
   final String plantType;
+  final Map<String, dynamic>? distribution;
+  final bool isBlurry;
+  final double blurScore;
 
   PredictionResult({
     required this.disease,
     required this.displayName,
     required this.confidence,
     required this.plantType,
+    this.distribution,
+    this.isBlurry = false,
+    this.blurScore = 0.0,
   });
 
   factory PredictionResult.fromJson(Map<String, dynamic> json) {
@@ -17,6 +23,9 @@ class PredictionResult {
       displayName: json['display_name'] ?? '',
       confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
       plantType: json['plant_type'] ?? '',
+      distribution: json['distribution'] as Map<String, dynamic>?,
+      isBlurry: json['is_blurry'] ?? false,
+      blurScore: (json['blur_score'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }

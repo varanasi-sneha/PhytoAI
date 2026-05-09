@@ -5,7 +5,6 @@ import '../auth_service.dart';
 import '../app_state.dart';
 import 'prediction_screen.dart';
 import 'history_screen.dart';
-import 'prevention_screen.dart';
 import 'profile_screen.dart';
 import 'drug_classification_screen.dart';
 
@@ -22,7 +21,6 @@ class _HomeScreenState extends State<HomeScreen> {
   static const List<Widget> _screens = [
     PredictionScreen(),
     HistoryScreen(),
-    PreventionScreen(),
     DrugClassificationScreen(),
     ProfileScreen(),
   ];
@@ -30,7 +28,6 @@ class _HomeScreenState extends State<HomeScreen> {
   static const List<String> _titles = [
     'Plant Detection',
     'History',
-    'Prevention',
     'Drug Classification',
     'Profile',
   ];
@@ -117,11 +114,6 @@ class _HomeScreenState extends State<HomeScreen> {
             BottomNavigationBarItem(
               icon: Icon(Icons.history),
               label: 'History',
-            ),
-
-            BottomNavigationBarItem(
-              icon: Icon(Icons.health_and_safety),
-              label: 'Prevention',
             ),
 
             BottomNavigationBarItem(
