@@ -20,15 +20,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
   static const List<Widget> _screens = [
     PredictionScreen(),
-    HistoryScreen(),
     DrugClassificationScreen(),
+    HistoryScreen(),
     ProfileScreen(),
   ];
 
   static const List<String> _titles = [
     'Plant Detection',
-    'History',
     'Drug Classification',
+    'History',
     'Profile',
   ];
 
@@ -112,13 +112,13 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
 
             BottomNavigationBarItem(
-              icon: Icon(Icons.history),
-              label: 'History',
+              icon: Icon(Icons.science),
+              label: 'Drugs',
             ),
 
             BottomNavigationBarItem(
-              icon: Icon(Icons.science),
-              label: 'Drugs',
+              icon: Icon(Icons.history),
+              label: 'History',
             ),
 
             BottomNavigationBarItem(

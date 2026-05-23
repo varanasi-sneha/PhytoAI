@@ -1,0 +1,9 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "flutter": true,
+        "/^cmd /c dir C:\\\\Users\\\\Ramesh\\\\AppData\\\\Local\\\\Pub\\\\Cache\\\\hosted\\\\pub\\.dev\\\\onnxruntime-1\\.4\\.1 /s /b$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

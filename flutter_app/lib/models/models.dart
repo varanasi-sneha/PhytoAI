@@ -34,11 +34,13 @@ class UserProfile {
   final String email;
   final String? firstName;
   final String? lastName;
+  final String? profileImagePath;
 
   UserProfile({
     required this.email,
     this.firstName,
     this.lastName,
+    this.profileImagePath,
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
@@ -46,6 +48,7 @@ class UserProfile {
       email: json['email'] ?? '',
       firstName: json['first_name'],
       lastName: json['last_name'],
+      profileImagePath: json['profile_image_path'],
     );
   }
 }

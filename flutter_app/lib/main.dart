@@ -5,6 +5,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'api_service.dart';
 import 'app_state.dart';
 import 'auth_service.dart';
+import 'services/cache_service.dart';
+import 'services/local_inference_service.dart';
+import 'services/network_service.dart';
+import 'services/local_profile_service.dart';
+import 'services/local_history_service.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/signup_screen.dart';
 import 'screens/home_screen.dart';
@@ -17,6 +22,12 @@ void main() async {
     anonKey: 'sb_publishable_JPouxdPJhmiwdJ-_dlWXIg_pfMcsDUO',
   );
 
+  final cacheService = CacheService();
+  await cacheService.init();
+  final networkService = NetworkService();
+  final localInferenceService = LocalInferenceService(cacheService: cacheService);
+  await localInferenceService.initialize();
+
   runApp(
     MultiProvider(
       providers: [
@@ -24,9 +35,31 @@ void main() async {
           create: (_) => AuthService(),
         ),
 
+        Provider<CacheService>.value(
+          value: cacheService,
+        ),
+
+        Provider<NetworkService>.value(
+          value: networkService,
+        ),
+
+        Provider<LocalInferenceService>.value(
+          value: localInferenceService,
+        ),
+
+        Provider<LocalProfileService>(
+          create: (context) => LocalProfileService(cache: cacheService, auth: context.read<AuthService>()),
+        ),
+
+        Provider<LocalHistoryService>(
+          create: (context) => LocalHistoryService(cache: cacheService),
+        ),
+
         Provider<ApiService>(
           create: (context) => ApiService(
             context.read<AuthService>(),
+            context.read<CacheService>(),
+            context.read<NetworkService>(),
           ),
         ),
 

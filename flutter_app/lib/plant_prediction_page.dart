@@ -5,7 +5,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import 'api_service.dart';
-import 'auth_service.dart';
 
 class PlantPredictionPage extends StatefulWidget {
   const PlantPredictionPage({Key? key}) : super(key: key);
@@ -55,7 +54,7 @@ class _PlantPredictionPageState extends State<PlantPredictionPage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _apiService = ApiService(context.read<AuthService>());
+    _apiService = context.read<ApiService>();
   }
 
   @override

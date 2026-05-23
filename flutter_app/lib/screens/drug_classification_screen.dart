@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../api_service.dart';
+import '../services/cache_service.dart';
+import '../services/error_service.dart';
 
 class DrugClassificationScreen extends StatefulWidget {
   const DrugClassificationScreen({Key? key}) : super(key: key);
@@ -58,9 +60,10 @@ class _DrugClassificationScreenState extends State<DrugClassificationScreen> {
         }
         _confirmMedicine = false; // Reset for next use
       });
-    } catch (e) {
+    } catch (error) {
+      final appError = ErrorService.parse(error);
       setState(() {
-        _errorMessage = 'Unable to classify compound. Please try another input.';
+        _errorMessage = appError.message;
       });
     } finally {
       setState(() {
@@ -646,24 +649,32 @@ class _DrugClassificationScreenState extends State<DrugClassificationScreen> {
       return;
     }
 
+    final cacheService = context.read<CacheService>();
+    final normalized = query.toLowerCase().trim();
+    final cacheKey = 'drug_suggestions:$normalized';
+    final cached = cacheService.get(cacheKey);
+    if (cached is List) {
+      setState(() {
+        _suggestions = List<String>.from(cached);
+        _showSuggestions = _suggestions.isNotEmpty;
+      });
+      return;
+    }
+
     try {
-
-      final apiService =
-          context.read<ApiService>();
-
-      final results =
-          await apiService
-              .getDrugAutocomplete(query);
+      final apiService = context.read<ApiService>();
+      final results = await apiService.getDrugAutocomplete(query);
+      cacheService.set(cacheKey, results, ttl: const Duration(minutes: 30));
 
       setState(() {
-
-        _suggestions =
-            List<String>.from(results);
-
-        _showSuggestions =
-            _suggestions.isNotEmpty;
+        _suggestions = List<String>.from(results);
+        _showSuggestions = _suggestions.isNotEmpty;
       });
-
-    } catch (_) {}
+    } catch (_) {
+      setState(() {
+        _suggestions = [];
+        _showSuggestions = false;
+      });
+    }
   }
 }
