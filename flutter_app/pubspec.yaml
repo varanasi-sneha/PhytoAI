@@ -30,7 +30,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
+  webview_flutter: ^4.7.0
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
@@ -73,7 +73,10 @@ flutter:
 
   assets:
     - assets/models/plant_model.onnx
-
+    - assets/models/np_classifier_v7_2.onnx
+    - assets/models/np_classifier_v7_2_int8.onnx
+    - assets/models/thresholds_v7_2.json
+    - assets/rdkit/rdkit_bridge.html
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

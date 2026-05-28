@@ -1,0 +1,20 @@
+{
+  "thresholds": [
+    0.22,
+    0.31999999999999995,
+    0.2,
+    0.24,
+    0.47999999999999987
+  ],
+  "class_names": {
+    "0": "Animal-derived",
+    "1": "Bacteria-derived",
+    "2": "Chromista-derived",
+    "3": "Fungi-derived",
+    "4": "Plant-derived"
+  },
+  "fp_bits": 1024,
+  "fp_radius": 2,
+  "use_maccs": true,
+  "fp_dim": 1191
+}
