@@ -50,62 +50,47 @@ body.dark-mode .menu-item:hover {
 <body>
 
 <div class="navbar">
-
-<a href="/" class="logo">PhytoAI🪴</a>
-
-<div class="nav-buttons">
-
-<button id="authBtn">Login/Signup🌱</button>
-
-<div id="profileContainer" style="display:none; position:relative;">
-
-    <div id="profileIcon"></div>
-
-    <div id="dropdownMenu" style="
-        display:none;
-        position:absolute;
-        right:0;
-        top:50px;
-        background:var(--color-card);
-        border-radius:12px;
-        box-shadow:0 8px 24px var(--color-shadow);
-        overflow:hidden;
-        border:1px solid var(--color-border);
-        z-index:10;
-        min-width:160px;
-    ">
-        <div class="menu-item" onclick="goProfile()">👤 Profile</div>
-        <div class="menu-item" onclick="logout()">🚪 Logout</div>
+    <a href="/" class="logo">PhytoAI🪴</a>
+    <div class="nav-buttons">
+        <button id="authBtn">Login/Signup🌱</button>
+        <div id="profileContainer" style="display:none; position:relative;">
+            <div id="profileIcon"></div>
+            <div id="dropdownMenu" style="
+                display:none;
+                position:absolute;
+                right:0;
+                top:50px;
+                background:var(--color-card);
+                border-radius:12px;
+                box-shadow:0 8px 24px var(--color-shadow);
+                overflow:hidden;
+                border:1px solid var(--color-border);
+                z-index:10;
+                min-width:160px;
+            ">
+                <div class="menu-item" onclick="goProfile()">👤 Profile</div>
+                <div class="menu-item" onclick="logout()">🚪 Logout</div>
+            </div>
+        </div>
     </div>
-
-</div>
-
-</div>
-
 </div>
 
 <div class="main">
 
-<h1>🪴 Welcome to PhytoAI 🪴</h1>
-
-<p>Detect plant diseases with advanced AI technology</p>
-
-<div class="options">
-
-<div class="option-card" id="plantDetection">
-🌿 Plant Disease Detection
-</div>
-
-<div class="option-card" id="drugClassification">
-💊 Drug Classification
-</div>
-
-</div>
-
+    <h1>🪴 Welcome to PhytoAI 🪴</h1>
+    <p>Detect Plant Diseases and Classify Natural Drug Compounds with advanced AI technology</p>
+    <div class="options">
+        <div class="option-card" id="plantDetection">
+        🌿 Plant Disease Detection
+        </div>
+        <div class="option-card" id="drugClassification">
+        💊 Drug Classification
+        </div>
+    </div>
 </div>
 
 <div class="footer">
-© 2026 PhytoAI | Advanced Plant Disease Detection
+© 2026 PhytoAI | Advanced Plant Disease Detection and Drug Classification
 </div>
 
 {% include "components/auth_modal.html" %}
@@ -129,10 +114,35 @@ async function initNavbar() {
         authBtn.style.display = "none";
         profileContainer.style.display = "block";
 
-        const name = session.user.user_metadata?.full_name || "User";
+        const name =
+          session.user.user_metadata?.name ||
+          session.user.user_metadata?.full_name ||
+          session.user.email.split("@")[0];
+        
         const initials = name.split(" ").map(n => n[0]).join("").toUpperCase();
 
-        profileIcon.innerText = initials;
+        const path = `${session.user.id}.jpg`;
+        const { data } = supabaseClient.storage.from("profile_pics").getPublicUrl(path);
+
+        const img = new Image();
+
+        img.src = data.publicUrl + "?t=" + Date.now();
+
+        img.onload = () => {
+            // ✅ Image exists
+            profileIcon.innerHTML = "";
+            profileIcon.appendChild(img);
+
+            img.style.width = "100%";
+            img.style.height = "100%";
+            img.style.borderRadius = "50%";
+            img.style.objectFit = "cover";
+        };
+
+        img.onerror = () => {
+            // ❌ Image does NOT exist → fallback
+            profileIcon.innerText = initials;
+        };
 
         profileIcon.onclick = () => {
             dropdown.style.display =

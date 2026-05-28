@@ -295,6 +295,15 @@ body.dark-mode .settings-form .secondary {
   box-shadow: 0 8px 20px rgba(239, 68, 68, 0.3) !important;
 }
 
+.inline-name-input {
+    font-size: 20px;
+    font-weight: 700;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 4px 8px;
+    outline: none;
+}
+
 #chart { max-width: 100%; max-height: 300px; }
 
 @media (max-width: 768px) {
@@ -310,20 +319,137 @@ body.dark-mode .settings-form .secondary {
 }
 </style>
 </head>
+<script>
+async function initNavbar() {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+
+    const authBtn = document.getElementById("authBtn");
+    const profileContainer = document.getElementById("profileContainer");
+    const profileIcon = document.getElementById("profileIcon");
+    const dropdown = document.getElementById("dropdownMenu");
+
+    if (session) {
+        authBtn.style.display = "none";
+        profileContainer.style.display = "block";
+
+        const name =
+          session.user.user_metadata?.name ||
+          session.user.user_metadata?.full_name ||
+          session.user.email.split("@")[0];
+        const initials = name.split(" ").map(n => n[0]).join("").toUpperCase();
+
+        const path = `${session.user.id}.jpg`;
+        const { data } = supabaseClient.storage.from("profile_pics").getPublicUrl(path);
+
+        const img = new Image();
+
+        img.src = data.publicUrl + "?t=" + Date.now();
+
+        img.onload = () => {
+            // ✅ Image exists
+            profileIcon.innerHTML = "";
+            profileIcon.appendChild(img);
+
+            img.style.width = "100%";
+            img.style.height = "100%";
+            img.style.borderRadius = "50%";
+            img.style.objectFit = "cover";
+        };
+
+        img.onerror = () => {
+            // ❌ Image does NOT exist → fallback
+            profileIcon.innerText = initials;
+        };
+
+        profileIcon.onclick = () => {
+            dropdown.style.display =
+                dropdown.style.display === "block" ? "none" : "block";
+        };
+
+        // Close dropdown when clicking outside
+        document.addEventListener("click", (e) => {
+            if (!profileContainer.contains(e.target)) {
+                dropdown.style.display = "none";
+            }
+        });
+
+    } else {
+        authBtn.style.display = "block";
+        profileContainer.style.display = "none";
+    }
+
+    if (window.location.pathname === "/profile") {
+        const profileItem = document.querySelector("#dropdownMenu .menu-item");
+        if (profileItem) profileItem.style.display = "none";
+    }
+}
+function goProfile() {
+    window.location.href = "/profile";
+}
+
+async function logout() {
+    await supabaseClient.auth.signOut();
+    window.location.reload();
+}
+
+</script>
 <body>
+<div class="navbar">
+  <a href="/homepage" class="logo">PhytoAI🪴</a>
+  <div class="nav-buttons">
+    <button id="authBtn">Login/Signup🌱</button>
+    <div id="profileContainer" style="display:none; position:relative;">
+      <div id="profileIcon"></div>
+      <div id="dropdownMenu" style="
+          display:none;
+          position:absolute;
+          right:0;
+          top:50px;
+          background:var(--color-card);
+          border-radius:12px;
+          box-shadow:0 8px 24px var(--color-shadow);
+          overflow:hidden;
+          border:1px solid var(--color-border);
+          z-index:10;
+          min-width:160px;
+      ">
+      <div class="menu-item" onclick="goProfile()">👤 Profile</div>
+      <div class="menu-item" onclick="logout()">🚪 Logout</div>
+    </div>
 
-<div class="container">
+  </div>
 
-<div class="topbar">
-  <button class="secondary" onclick="goHome()">← Home</button>
+  </div>
+
 </div>
-
+<div class="container">
 <div class="card profile-header">
   <div class="avatar-section">
     <img id="profileImg">
     <div id="avatarFallback" class="avatar"></div>
     <input type="file" id="uploadInput" accept="image/jpeg,image/jpg">
-    <button class="primary" onclick="uploadClick()">📸 Change Photo</button>
+    <div style="display:flex; gap:10px;">
+    <div style="position:relative;">
+    <button class="primary" onclick="togglePhotoMenu()">📸 Change Photo</button>
+      <div id="photoMenu" style="
+          display:none;
+          position:absolute;
+          top:50px;
+          left:0;
+          background:var(--color-card);
+          border-radius:10px;
+          box-shadow:0 8px 24px var(--color-shadow);
+          border:1px solid var(--color-border);
+          overflow:hidden;
+          z-index:10;
+          min-width:150px;
+      ">
+          <div class="menu-item" onclick="openCamera()">📷 Camera</div>
+          <div class="menu-item" onclick="openGallery()">📁 Gallery</div>
+      </div>
+    </div>
+        <button class="secondary" onclick="deletePhoto()">🗑️ Delete</button>
+    </div>
   </div>
 
   <div class="profile-info">
@@ -344,7 +470,28 @@ body.dark-mode .settings-form .secondary {
 <div id="settingsTab" class="tab-content card"></div>
 
 </div>
+<div id="cameraBox" style="
+    display:none;
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:black;
+    justify-content:center;
+    align-items:center;
+    flex-direction:column;
+    z-index:9999;
+">
 
+    <video id="cameraVideo" autoplay playsinline
+        style="width:90%; max-width:400px; border-radius:12px;"></video>
+
+    <button onclick="capturePhoto()" style="margin-top:15px;">📸 Capture</button>
+    <button onclick="closeCamera()" style="margin-top:10px;">❌ Cancel</button>
+
+    <canvas id="cameraCanvas" style="display:none;"></canvas>
+</div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="/static/js/theme.js"></script>
@@ -354,8 +501,13 @@ const supabaseUrl = "https://eabarbrhjoptxagcnomy.supabase.co";
 const supabaseKey = "sb_publishable_JPouxdPJhmiwdJ-_dlWXIg_pfMcsDUO";
 window.supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 </script>
-
 <script src="/static/profile.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    initNavbar();
+});
+</script>
 
 </body>
 </html>

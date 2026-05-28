@@ -17,7 +17,10 @@ class PredictionService:
     def process_prediction(file):
         # ── Basic file checks ────────────────────────────────
         if not file or file.filename == '':
-            return {"error": "No selected file"}, 400
+            return {
+                "error": "invalid_image",
+                "message": "No image file was selected. Please upload a JPG or PNG image."
+            }, 400
 
         if not PredictionService.allowed_file(file.filename):
             return {
@@ -34,33 +37,37 @@ class PredictionService:
 
             # ── Handle invalid predictions ───────────────────
             if not prediction_data.get("valid"):
-                os.remove(filepath)
+                if os.path.exists(filepath):
+                    os.remove(filepath)
                 error_type = prediction_data.get("error")
 
                 if error_type == "unclear_image":
                     return {
                         "error": "unclear_image",
-                        "message": prediction_data.get("message")
+                        "message": prediction_data.get("message", "The image is too blurry. Please upload a clearer photo."),
+                        "confidence_percentage": prediction_data.get("confidence_percentage"),
+                        "distribution": prediction_data.get("distribution"),
                     }, 422
 
                 if error_type == "not_a_spinach_leaf":
                     return {
                         "error": "not_a_spinach_leaf",
-                        "message": prediction_data.get("message"),
+                        "message": prediction_data.get("message", "This doesn't appear to be a Malabar Spinach leaf."),
                         "confidence": prediction_data.get("confidence"),
                         "confidence_percentage": prediction_data.get("confidence_percentage"),
+                        "distribution": prediction_data.get("distribution"),
                     }, 422
 
                 if error_type == "invalid_image":
                     return {
                         "error": "invalid_image",
-                        "message": prediction_data.get("message")
+                        "message": prediction_data.get("message", "Could not read the image. Please upload a valid JPG or PNG.")
                     }, 400
 
                 # Fallback for any other invalid case
                 return {
                     "error": "prediction_failed",
-                    "message": "Could not process this image. Please try again."
+                    "message": prediction_data.get("message", "Could not process this image. Please try again.")
                 }, 422
 
             # ── Valid prediction — attach prevention data ─────
@@ -73,10 +80,14 @@ class PredictionService:
                 if prevention:
                     prediction_data["prevention"] = prevention
 
-            os.remove(filepath)
+            if os.path.exists(filepath):
+                os.remove(filepath)
             return prediction_data, 200
 
         except Exception as e:
             if os.path.exists(filepath):
                 os.remove(filepath)
-            return {"error": f"Error processing image: {str(e)}"}, 500
+            return {
+                "error": "prediction_error",
+                "message": f"Error processing image: {str(e)}"
+            }, 500
