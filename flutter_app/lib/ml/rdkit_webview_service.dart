@@ -120,7 +120,8 @@ class RDKitWebViewService {
       );
     }
 
-    debugPrint('[RDKit] generateFingerprint called, ready=$_ready');
+    debugPrint('[RDKit] generateFingerprint called for SMILES: "$smiles"');
+    debugPrint('[RDKit] WebView ready state: $_ready');
     await waitUntilReady();
 
     final id = _callId++;
@@ -159,7 +160,7 @@ class RDKitWebViewService {
 
   void _handleResult(String message) {
     try {
-      debugPrint('[RDKit] FingerprintResult received, length=${message.length}');
+      debugPrint('[RDKit] FingerprintResult received, raw length=${message.length}');
       final outer = jsonDecode(message) as Map<String, dynamic>;
       final id = outer['id'] as int;
       final completer = _pending.remove(id);
@@ -169,10 +170,11 @@ class RDKitWebViewService {
       }
 
       final String dataStr = outer['data'] as String;
+      debugPrint('[RDKit] validation payload: $dataStr');
       final inner = jsonDecode(dataStr) as Map<String, dynamic>;
 
       if (inner.containsKey('error')) {
-        debugPrint('[RDKit] JS error: ${inner['error']}');
+        debugPrint('[RDKit] SMILES validation failed, error: ${inner['error']}');
         completer.completeError(AppError(
           code: 'rdkit_js_error',
           message: inner['error'] as String,
@@ -183,7 +185,7 @@ class RDKitWebViewService {
       }
 
       final List<dynamic> fpList = inner['fingerprint'] as List<dynamic>;
-      debugPrint('[RDKit] Fingerprint received, length=${fpList.length}');
+      debugPrint('[RDKit] fingerprint list returned, length=${fpList.length}');
 
       if (fpList.length != 1191) {
         completer.completeError(AppError(

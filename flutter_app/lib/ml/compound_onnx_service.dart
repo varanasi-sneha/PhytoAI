@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:onnxruntime/onnxruntime.dart';
@@ -84,10 +82,10 @@ class CompoundOnnxService {
         : 'input';
     debugPrint('[CompoundONNX] Using input name: $inputName');
 
-    final ortValue = OrtValueTensor.createTensorWithDataList(
-      inputTensor,
-      [1, 1191],
-    );
+    final ortValue = OrtValueTensor.createTensorWithDataList(inputTensor, [
+      1,
+      1191,
+    ]);
     final runOptions = OrtRunOptions();
 
     try {
@@ -95,26 +93,88 @@ class CompoundOnnxService {
       final outputs = _session!.run(runOptions, {inputName: ortValue});
       debugPrint('[CompoundONNX] Outputs count: ${outputs.length}');
 
-      if (outputs.isEmpty || outputs.first == null) {
+      if (outputs.isEmpty) {
         throw Exception('inference_failed: empty outputs');
       }
 
-      final dynamic outputData = outputs[1]!.value;
-      debugPrint('[CompoundONNX] Output type: ${outputData.runtimeType}');
-      debugPrint('[CompoundONNX] Raw output: $outputData');
-
-      final List<double> rawOutput = [];
-
-      if (outputData is List) {
-        if (outputData.isNotEmpty && outputData.first is List) {
-          rawOutput.addAll(
-            (outputData.first as List).map((e) => (e as num).toDouble()),
-          );
-        } else {
-          rawOutput.addAll(outputData.map((e) => (e as num).toDouble()));
+      List<double> flattenNumeric(dynamic value) {
+        if (value == null) return [];
+        if (value is num) return [value.toDouble()];
+        if (value is Float32List) {
+          return value.map((e) => e.toDouble()).toList();
         }
-      } else {
-        throw Exception('inference_failed: unexpected output type');
+        if (value is List) {
+          if (value.isEmpty) return [];
+          if (value.every((element) => element is num)) {
+            return value.cast<num>().map((e) => e.toDouble()).toList();
+          }
+          return value.expand((element) => flattenNumeric(element)).toList();
+        }
+        if (value is Map) {
+          return value.values
+              .expand((element) => flattenNumeric(element))
+              .toList();
+        }
+        try {
+          final dynamic nested = (value as dynamic).value;
+          if (nested != null && nested != value) {
+            return flattenNumeric(nested);
+          }
+        } catch (_) {}
+        return [];
+      }
+
+      List<List<double>> collectCandidates(dynamic value) {
+        if (value == null) return [];
+        if (value is num || value is Float32List || value is List) {
+          final flattened = flattenNumeric(value);
+          if (flattened.isNotEmpty) {
+            return [flattened];
+          }
+          return [];
+        }
+        if (value is Map) {
+          final candidates = <List<double>>[];
+          for (final element in value.values) {
+            candidates.addAll(collectCandidates(element));
+          }
+          return candidates;
+        }
+        try {
+          final dynamic nested = (value as dynamic).value;
+          if (nested != null && nested != value) {
+            return collectCandidates(nested);
+          }
+        } catch (_) {}
+        return [];
+      }
+
+      final candidates = <List<double>>[];
+      for (final output in outputs) {
+        if (output == null) continue;
+        dynamic outputValue;
+        try {
+          outputValue = (output as dynamic).value;
+        } catch (_) {
+          outputValue = output;
+        }
+        candidates.addAll(collectCandidates(outputValue));
+      }
+
+      debugPrint('[CompoundONNX] Candidate count: ${candidates.length}');
+      for (final candidate in candidates) {
+        debugPrint(
+          '[CompoundONNX] Candidate length=${candidate.length}: $candidate',
+        );
+      }
+
+      final List<double> rawOutput = candidates.firstWhere(
+        (candidate) => candidate.length == 5,
+        orElse: () => candidates.isNotEmpty ? candidates.first : [],
+      );
+
+      if (rawOutput.isEmpty) {
+        throw Exception('inference_failed: no numeric output found');
       }
 
       debugPrint('[CompoundONNX] Raw output length: ${rawOutput.length}');

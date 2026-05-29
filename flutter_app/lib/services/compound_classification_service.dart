@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:math';
-import 'dart:typed_data';
 
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -16,20 +15,59 @@ class CompoundClassificationService {
   CompoundClassificationService({
     required CacheService cacheService,
     required NetworkService networkService,
-  })  : _cacheService = cacheService,
-        _networkService = networkService;
+  }) : _cacheService = cacheService,
+       _networkService = networkService;
 
   final CacheService _cacheService;
   final NetworkService _networkService;
 
-  static const String _pubchemBase = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug';
+  static const String _pubchemBase =
+      'https://pubchem.ncbi.nlm.nih.gov/rest/pug';
   static const String _thresholdsAsset = 'assets/models/thresholds_v7_2.json';
 
   static final RegExp _casRegExp = RegExp(r'^\d{2,7}-\d{2}-\d$');
   static final Set<String> _smilesChars = {
-    'C', 'N', 'O', 'S', 'P', 'F', 'B', 'r', 'I', 'l', 'c',
-    '(', ')', '[', ']', '=', '@', '+', '-', '.', '#', '\\', '/',
-    '%', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'
+    'C',
+    'N',
+    'O',
+    'S',
+    'P',
+    'F',
+    'B',
+    'r',
+    'I',
+    'l',
+    'c',
+    'n',
+    'o',
+    's',
+    'p',
+    'f',
+    'b',
+    'h',
+    '(',
+    ')',
+    '[',
+    ']',
+    '=',
+    '@',
+    '+',
+    '-',
+    '.',
+    '#',
+    '\\',
+    '/',
+    '%',
+    '0',
+    '1',
+    '2',
+    '3',
+    '4',
+    '5',
+    '6',
+    '7',
+    '8',
+    '9',
   };
 
   static const List<String> _classNames = [
@@ -43,7 +81,9 @@ class CompoundClassificationService {
   List<double>? _cachedThresholds;
 
   Future<void> _ensureModelLoaded() async {
-    debugPrint('[Compound] _ensureModelLoaded: isInitialized=${CompoundOnnxService.instance.isInitialized}');
+    debugPrint(
+      '[Compound] _ensureModelLoaded: isInitialized=${CompoundOnnxService.instance.isInitialized}',
+    );
     if (!CompoundOnnxService.instance.isInitialized) {
       debugPrint('[Compound] Loading compound ONNX model...');
       await CompoundOnnxService.instance.init();
@@ -53,7 +93,9 @@ class CompoundClassificationService {
 
   Future<List<double>> _loadThresholds() async {
     if (_cachedThresholds != null) {
-      debugPrint('[Compound] Using cached thresholds (${_cachedThresholds!.length})');
+      debugPrint(
+        '[Compound] Using cached thresholds (${_cachedThresholds!.length})',
+      );
       return _cachedThresholds!;
     }
     debugPrint('[Compound] Loading thresholds from asset...');
@@ -68,8 +110,12 @@ class CompoundClassificationService {
         fallbackAllowed: false,
       );
     }
-    _cachedThresholds = thresholdsRaw.map((item) => (item as num).toDouble()).toList();
-    debugPrint('[Compound] Thresholds loaded: ${_cachedThresholds!.length} values');
+    _cachedThresholds = thresholdsRaw
+        .map((item) => (item as num).toDouble())
+        .toList();
+    debugPrint(
+      '[Compound] Thresholds loaded: ${_cachedThresholds!.length} values',
+    );
     return _cachedThresholds!;
   }
 
@@ -77,18 +123,43 @@ class CompoundClassificationService {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return 'empty';
     if (_casRegExp.hasMatch(trimmed)) return 'cas';
-    if (_isSmiles(trimmed)) return 'smiles';
+    if (_looksLikeSmiles(trimmed)) return 'smiles';
     return 'text';
   }
 
-  bool _isSmiles(String text) {
+  bool _looksLikeSmiles(String text) {
     final normalized = text.trim();
     if (normalized.isEmpty) return false;
     if (normalized.contains(RegExp(r'\s'))) return false;
+    if (_casRegExp.hasMatch(normalized)) return false;
+    if (!_hasOnlySmilesChars(normalized)) return false;
+
+    // Clear SMILES indicators: ring closure digits, bond descriptors, brackets,
+    // chirality, explicit charges, or aromatic element syntax.
+    if (RegExp(r'[\[\]@+\-#=\\/%.0-9]').hasMatch(normalized)) {
+      return true;
+    }
+
+    // Short valid strings are likely SMILES.
+    if (normalized.length <= 4) {
+      return true;
+    }
+
     final smilesCount = normalized.runes
         .where((r) => _smilesChars.contains(String.fromCharCode(r)))
         .length;
-    return smilesCount / max(normalized.length, 1) > 0.65;
+    return smilesCount / max(normalized.length, 1) > 0.8;
+  }
+
+  bool _hasOnlySmilesChars(String text) {
+    return text.runes
+        .every((r) => _smilesChars.contains(String.fromCharCode(r)));
+  }
+
+  String _normalizeCacheKey(String text) {
+    final normalized = text.trim().toLowerCase();
+    final safe = normalized.replaceAll(RegExp(r'[^a-z0-9]+'), '_');
+    return 'pubchem_smiles:$safe';
   }
 
   Future<Map<String, dynamic>> classifyCompound(
@@ -99,6 +170,7 @@ class CompoundClassificationService {
     debugPrint('[Compound] input: "$input"');
 
     final trimmed = input.trim();
+    debugPrint('[SMILES] normalized user input: "$trimmed"');
     if (trimmed.isEmpty) {
       return {
         'status': 'error',
@@ -107,23 +179,47 @@ class CompoundClassificationService {
     }
 
     final inputType = detectInputType(trimmed);
-    debugPrint('[Compound] inputType: $inputType');
+    debugPrint('[SMILES] input classification: $inputType');
+    var effectiveInputType = inputType;
 
     if (inputType == 'smiles') {
-      debugPrint('[Compound] Detected SMILES — going direct to classify');
-      return await _classifySmiles(trimmed, inputType: 'smiles');
+      debugPrint('[SMILES] treating input as SMILES, validating via RDKit');
+      try {
+        final features = await CompoundFingerprintGenerator.generate(trimmed);
+        debugPrint(
+          '[RDKit] SMILES validation success for "$trimmed", fingerprint length: ${features.length}',
+        );
+        return await _classifySmiles(
+          trimmed,
+          inputType: 'smiles',
+          precomputedFeatures: features,
+        );
+      } catch (error, stack) {
+        debugPrint('[RDKit] SMILES validation failed for "$trimmed": $error');
+        debugPrint('[RDKit] validation stack: $stack');
+        debugPrint(
+          '[SMILES] Falling back from SMILES validation to PubChem name lookup for "$trimmed"',
+        );
+        effectiveInputType = 'text';
+      }
     }
 
-    final cacheKey = 'pubchem_smiles:${trimmed.toLowerCase()}';
+    final cacheKey = _normalizeCacheKey(trimmed);
+    if (cacheKey == 'pubchem_smiles:cholesterol' ||
+        cacheKey == 'pubchem_smiles:quercetin') {
+      await _cacheService.remove(cacheKey);
+      debugPrint('[Compound] invalidated stale cache for "$trimmed"');
+    }
     final cached = _cacheService.get(cacheKey);
     if (cached is Map<String, dynamic>) {
-      debugPrint('[Compound] Cache hit for "$trimmed"');
+      debugPrint('[Compound] Cache hit for "$trimmed" ($cacheKey)');
       return await _classifyResolved(
         cached,
         confirmMedicine: confirmMedicine,
-        inputType: inputType,
+        inputType: effectiveInputType,
       );
     }
+    debugPrint('[Compound] Cache miss for "$trimmed" ($cacheKey)');
 
     final isConnected = await _networkService.isConnected();
     debugPrint('[Compound] Network connected: $isConnected');
@@ -131,7 +227,8 @@ class CompoundClassificationService {
     if (!isConnected) {
       throw AppError(
         code: 'offline_resolution',
-        message: 'No internet connection to resolve compound names. '
+        message:
+            'No internet connection to resolve compound names. '
             'Please enter a canonical SMILES string or try again later.',
         retryable: true,
         fallbackAllowed: false,
@@ -143,11 +240,44 @@ class CompoundClassificationService {
     debugPrint('[Compound] PubChem result status: ${resolved['status']}');
     debugPrint('[Compound] PubChem SMILES: ${resolved['smiles']}');
 
-    await _cacheService.set(cacheKey, resolved, ttl: const Duration(days: 30));
+    if (resolved['status'] == 'not_found' && _hasOnlySmilesChars(trimmed)) {
+      debugPrint(
+        '[SMILES] PubChem lookup failed for "$trimmed"; attempting strict SMILES validation fallback',
+      );
+      try {
+        final features = await CompoundFingerprintGenerator.generate(trimmed);
+        debugPrint(
+          '[RDKit] Fallback SMILES validation success for "$trimmed", fingerprint length: ${features.length}',
+        );
+        return await _classifySmiles(
+          trimmed,
+          inputType: 'smiles',
+          precomputedFeatures: features,
+        );
+      } catch (error, stack) {
+        debugPrint(
+          '[RDKit] Fallback SMILES validation failed for "$trimmed": $error',
+        );
+        debugPrint('[RDKit] fallback stack: $stack');
+      }
+    }
+
+    final bool negativeResult = resolved['status'] == 'not_found';
+    await _cacheService.set(
+      cacheKey,
+      resolved,
+      ttl: negativeResult
+          ? const Duration(minutes: 5)
+          : const Duration(days: 30),
+    );
+    debugPrint(
+      '[Compound] Cache store for "$trimmed" ($cacheKey): ' 
+      '${negativeResult ? 'negative short TTL' : 'positive long TTL'}',
+    );
     return await _classifyResolved(
       resolved,
       confirmMedicine: confirmMedicine,
-      inputType: inputType,
+      inputType: effectiveInputType,
     );
   }
 
@@ -179,7 +309,8 @@ class CompoundClassificationService {
       return {
         'status': 'not_found',
         'input_type': inputType,
-        'message': resolved['message'] ?? 'Could not resolve compound to SMILES.',
+        'message':
+            resolved['message'] ?? 'Could not resolve compound to SMILES.',
         'suggestions': resolved['suggestions'] ?? [],
       };
     }
@@ -196,6 +327,7 @@ class CompoundClassificationService {
   Future<Map<String, dynamic>> _classifySmiles(
     String smiles, {
     required String inputType,
+    Float32List? precomputedFeatures,
     String? resolvedName,
     String? iupacName,
     String? saltWarning,
@@ -204,9 +336,14 @@ class CompoundClassificationService {
     debugPrint('[Compound] SMILES: "$smiles"');
 
     try {
-      debugPrint('[Compound] Step 1: Generating fingerprint via RDKit WebView...');
-      final features = await CompoundFingerprintGenerator.generate(smiles);
-      debugPrint('[Compound] ✅ Fingerprint generated, length: ${features.length}');
+      debugPrint(
+        '[Compound] Step 1: Generating fingerprint via RDKit WebView...',
+      );
+      final features = precomputedFeatures ??
+          await CompoundFingerprintGenerator.generate(smiles);
+      debugPrint(
+        '[Compound] ✅ Fingerprint generated, length: ${features.length}',
+      );
 
       debugPrint('[Compound] Step 2: Ensuring ONNX model loaded...');
       await _ensureModelLoaded();
@@ -223,7 +360,8 @@ class CompoundClassificationService {
       if (thresholds.length != probs.length) {
         throw AppError(
           code: 'threshold_mismatch',
-          message: 'Model and threshold dimensions do not match. '
+          message:
+              'Model and threshold dimensions do not match. '
               'probs=${probs.length}, thresholds=${thresholds.length}',
           retryable: false,
           fallbackAllowed: false,
@@ -241,10 +379,18 @@ class CompoundClassificationService {
       final chosenClass = _classNames[chosenIndex];
       final confidence = probs[chosenIndex];
 
-      debugPrint('[Compound] ✅ Result: $chosenClass (${(confidence * 100).toStringAsFixed(1)}%)');
+      debugPrint(
+        '[Compound] ✅ Result: $chosenClass (${(confidence * 100).toStringAsFixed(1)}%)',
+      );
 
-      final probabilities = Map<String, dynamic>.fromIterables(_classNames, probs);
-      final marginMap = Map<String, dynamic>.fromIterables(_classNames, margins);
+      final probabilities = Map<String, dynamic>.fromIterables(
+        _classNames,
+        probs,
+      );
+      final marginMap = Map<String, dynamic>.fromIterables(
+        _classNames,
+        margins,
+      );
 
       return {
         'status': 'classified',
@@ -255,33 +401,35 @@ class CompoundClassificationService {
         'class_name': chosenClass,
         'class_short': chosenClass.split('-').first,
         'confidence': confidence,
-        'confidence_percentage': double.parse((confidence * 100).toStringAsFixed(1)),
+        'confidence_percentage': double.parse(
+          (confidence * 100).toStringAsFixed(1),
+        ),
         'probabilities': probabilities,
         'margins': marginMap,
         'thresholds': thresholds,
         'margin_based': maxMargin >= 0,
         'selected_by': maxMargin >= 0 ? 'margin' : 'probability',
         'salt_warning': saltWarning,
-        'message': 'Predicted $chosenClass with ${(confidence * 100).toStringAsFixed(1)}% confidence.',
+        'message':
+            'Predicted $chosenClass with ${(confidence * 100).toStringAsFixed(1)}% confidence.',
       };
     } catch (error, stack) {
       debugPrint('[Compound] ❌ ERROR in _classifySmiles: $error');
       debugPrint('[Compound] Stack: $stack');
       final appError = ErrorService.parse(error);
-      return {
-        'status': 'error',
-        'message': appError.message,
-      };
+      return {'status': 'error', 'message': appError.message};
     }
   }
 
   Future<Map<String, dynamic>> _resolveNameToSmiles(String query) async {
-    debugPrint('[Compound] _resolveNameToSmiles: "$query"');
+    debugPrint('[PubChem] _resolveNameToSmiles called with raw query: "$query"');
     final normalized = query.trim();
+    debugPrint('[PubChem] normalized query: "$normalized"');
     final cid = await _resolveNameToCid(normalized);
-    debugPrint('[Compound] PubChem CID: $cid');
+    debugPrint('[PubChem] extracted CID: $cid');
 
     if (cid == null) {
+      debugPrint('[PubChem] not_found reason: CID lookup failed or returned no CID for "$normalized"');
       return {
         'status': 'not_found',
         'message': "'$query' not found on PubChem.",
@@ -290,9 +438,10 @@ class CompoundClassificationService {
     }
 
     final props = await _fetchPropertiesByCid(cid);
-    debugPrint('[Compound] PubChem props: $props');
+    debugPrint('[PubChem] resolved PubChem properties: $props');
 
     if (props == null) {
+      debugPrint('[PubChem] not_found reason: property fetch returned no usable SMILES for CID $cid');
       return {
         'status': 'not_found',
         'message': "No structure properties found for '$query'.",
@@ -300,15 +449,22 @@ class CompoundClassificationService {
       };
     }
 
-    final smiles = (props['IsomericSMILES'] ?? props['CanonicalSMILES'] ?? '') as String;
+    final smiles =
+        (props['IsomericSMILES'] ??
+                props['CanonicalSMILES'] ??
+                props['SMILES'] ??
+                '')
+            .toString()
+            .trim();
     final canonicalName = (props['Title'] ?? query) as String;
     final iupacName = (props['IUPACName'] ?? '') as String;
 
-    debugPrint('[Compound] Resolved SMILES: "$smiles"');
-    debugPrint('[Compound] Canonical name: "$canonicalName"');
+    debugPrint('[PubChem] Final resolved SMILES before RDKit: "$smiles"');
+    debugPrint('[PubChem] Canonical name: "$canonicalName"');
 
     final bool isMedicine =
-        _containsFormulationLanguage(normalized) || _looksLikeBrandName(normalized);
+        _containsFormulationLanguage(normalized) ||
+        _looksLikeBrandName(normalized);
     if (isMedicine) {
       return {
         'status': 'medicine_detected',
@@ -349,23 +505,70 @@ class CompoundClassificationService {
       r'\d+\s*ml\b',
       r'\b\d+\s*%\s*(w/v|v/v|w/w)\b',
     ];
-    return formulationPatterns
-        .any((pattern) => RegExp(pattern, caseSensitive: false).hasMatch(text));
+    return formulationPatterns.any(
+      (pattern) => RegExp(pattern, caseSensitive: false).hasMatch(text),
+    );
   }
 
   bool _looksLikeBrandName(String text) {
     final lower = text.toLowerCase();
     const knownBrands = [
-      'tylenol', 'advil', 'motrin', 'aleve', 'excedrin', 'nurofen',
-      'panadol', 'disprin', 'augmentin', 'amoxil', 'zithromax', 'cipro',
-      'flagyl', 'keflex', 'bactrim', 'septra', 'lipitor', 'crestor',
-      'zocor', 'norvasc', 'lopressor', 'tenormin', 'lasix', 'aldactone',
-      'plavix', 'coumadin', 'warfarin', 'glucophage', 'metformin', 'januvia',
-      'jardiance', 'ozempic', 'prozac', 'zoloft', 'lexapro', 'paxil',
-      'effexor', 'wellbutrin', 'abilify', 'seroquel', 'risperdal', 'zyprexa',
-      'xanax', 'valium', 'ativan', 'klonopin', 'nexium', 'prilosec',
-      'prevacid', 'protonix', 'viagra', 'cialis', 'levitra', 'tamiflu',
-      'plaquenil', 'hydroxychloroquine',
+      'tylenol',
+      'advil',
+      'motrin',
+      'aleve',
+      'excedrin',
+      'nurofen',
+      'panadol',
+      'disprin',
+      'augmentin',
+      'amoxil',
+      'zithromax',
+      'cipro',
+      'flagyl',
+      'keflex',
+      'bactrim',
+      'septra',
+      'lipitor',
+      'crestor',
+      'zocor',
+      'norvasc',
+      'lopressor',
+      'tenormin',
+      'lasix',
+      'aldactone',
+      'plavix',
+      'coumadin',
+      'warfarin',
+      'glucophage',
+      'metformin',
+      'januvia',
+      'jardiance',
+      'ozempic',
+      'prozac',
+      'zoloft',
+      'lexapro',
+      'paxil',
+      'effexor',
+      'wellbutrin',
+      'abilify',
+      'seroquel',
+      'risperdal',
+      'zyprexa',
+      'xanax',
+      'valium',
+      'ativan',
+      'klonopin',
+      'nexium',
+      'prilosec',
+      'prevacid',
+      'protonix',
+      'viagra',
+      'cialis',
+      'levitra',
+      'tamiflu',
+      'plaquenil',
+      'hydroxychloroquine',
     ];
     return knownBrands.any((brand) => lower.contains(brand));
   }
@@ -373,12 +576,34 @@ class CompoundClassificationService {
   Future<int?> _resolveNameToCid(String name) async {
     final encoded = Uri.encodeComponent(name);
     final url = '$_pubchemBase/compound/name/$encoded/cids/JSON';
-    debugPrint('[Compound] PubChem CID URL: $url');
+    debugPrint('[PubChem] CID lookup URL: $url');
     final jsonMap = await _pubchemGet(url);
+    debugPrint('[PubChem] CID lookup raw response: $jsonMap');
+
+    if (jsonMap == null) {
+      debugPrint('[PubChem] CID lookup returned null or invalid JSON for name "$name"');
+      return null;
+    }
+
+    debugPrint('[PubChem] CID lookup top-level keys: ${jsonMap.keys.toList()}');
+    final identifierList = jsonMap['IdentifierList'];
+    debugPrint('[PubChem] IdentifierList payload: $identifierList');
+
+    if (identifierList is! Map) {
+      debugPrint('[PubChem] CID lookup missing IdentifierList map');
+      return null;
+    }
+
+    final cidValue = identifierList['CID'];
+    debugPrint('[PubChem] CID array raw value: $cidValue');
+
     try {
-      final cid = jsonMap?['IdentifierList']?['CID']?[0];
+      final cid = cidValue?[0];
+      debugPrint('[PubChem] extracted CID value: $cid');
       return cid is int ? cid : null;
-    } catch (_) {
+    } catch (e, stack) {
+      debugPrint('[PubChem] CID extraction error: $e');
+      debugPrint('[PubChem] stack: $stack');
       return null;
     }
   }
@@ -386,32 +611,111 @@ class CompoundClassificationService {
   Future<Map<String, dynamic>?> _fetchPropertiesByCid(int cid) async {
     final url =
         '$_pubchemBase/compound/cid/$cid/property/IsomericSMILES,CanonicalSMILES,IUPACName,Title/JSON';
-    return await _pubchemGet(url).then((data) {
-      try {
-        final props = data?['PropertyTable']?['Properties']?[0];
-        if (props == null) return null;
-        if ((props['IsomericSMILES'] ?? props['CanonicalSMILES'] ?? '')
-            .toString()
-            .isEmpty) {
-          return null;
+    debugPrint('[PubChem] properties lookup URL: $url');
+    final data = await _pubchemGet(url);
+    if (data == null) {
+      debugPrint('[PubChem] properties lookup returned null for CID $cid');
+      return null;
+    }
+
+    final rawJson = json.encode(data);
+    debugPrint('[PubChem] properties lookup raw JSON body: $rawJson');
+    debugPrint('[PubChem] properties lookup top-level keys: ${data.keys.toList()}');
+
+    String formatJson(String jsonText) {
+      if (jsonText.length <= 1200) return jsonText;
+      return '${jsonText.substring(0, 1200)}...';
+    }
+
+    try {
+      final propsData = data['PropertyTable']?['Properties'];
+      if (propsData is List && propsData.isNotEmpty) {
+        final props = Map<String, dynamic>.from(propsData[0] as Map);
+        debugPrint('[PubChem] primary Property entry keys: ${props.keys.toList()}');
+        debugPrint('[PubChem] primary CanonicalSMILES: ${props['CanonicalSMILES']}');
+        debugPrint('[PubChem] primary IsomericSMILES: ${props['IsomericSMILES']}');
+        debugPrint('[PubChem] primary SMILES fallback: ${props['SMILES']}');
+        final smiles =
+            (props['IsomericSMILES'] ??
+                    props['CanonicalSMILES'] ??
+                    props['SMILES'] ??
+                    '')
+                .toString()
+                .trim();
+        debugPrint('[PubChem] primary final resolved SMILES before RDKit: "$smiles"');
+        if (smiles.isNotEmpty) {
+          return props;
         }
-        return Map<String, dynamic>.from(props);
-      } catch (_) {
-        return null;
+        debugPrint(
+          '[PubChem] not_found reason: primary property response contained no usable SMILES; raw JSON: ${formatJson(rawJson)}',
+        );
+      } else {
+        debugPrint(
+          '[PubChem] not_found reason: PropertyTable.Properties missing or empty; raw JSON: ${formatJson(rawJson)}',
+        );
       }
-    });
+    } catch (e) {
+      debugPrint(
+        '[Compound] PubChem properties parse error: $e; raw JSON: ${formatJson(rawJson)}',
+      );
+    }
+
+    // Fallback to the simple SMILES endpoint if the first property query did not yield a usable SMILES.
+    final fallbackUrl = '$_pubchemBase/compound/cid/$cid/property/SMILES/JSON';
+    debugPrint('[PubChem] fallback SMILES lookup URL: $fallbackUrl');
+    final fallbackData = await _pubchemGet(fallbackUrl);
+    if (fallbackData != null) {
+      final fallbackRawJson = json.encode(fallbackData);
+      debugPrint('[PubChem] fallback SMILES raw JSON body: $fallbackRawJson');
+      debugPrint('[PubChem] fallback SMILES top-level keys: ${fallbackData.keys.toList()}');
+      try {
+        final fallbackProps = fallbackData['PropertyTable']?['Properties'];
+        if (fallbackProps is List && fallbackProps.isNotEmpty) {
+          final props = Map<String, dynamic>.from(fallbackProps[0] as Map);
+          debugPrint('[PubChem] fallback Property entry keys: ${props.keys.toList()}');
+          final smiles = (props['SMILES'] ?? '').toString().trim();
+          debugPrint('[PubChem] fallback SMILES extracted: "$smiles"');
+          if (smiles.isNotEmpty) {
+            return props;
+          }
+          debugPrint(
+            '[PubChem] not_found reason: fallback SMILES response contained empty SMILES; raw JSON: ${formatJson(fallbackRawJson)}',
+          );
+        } else {
+          debugPrint(
+            '[PubChem] not_found reason: fallback response missing PropertyTable.Properties; raw JSON: ${formatJson(fallbackRawJson)}',
+          );
+        }
+      } catch (e) {
+        debugPrint(
+          '[PubChem] fallback parse error: $e; raw JSON: ${formatJson(fallbackRawJson)}',
+        );
+      }
+    }
+
+    return null;
   }
 
   Future<Map<String, dynamic>?> _pubchemGet(String url) async {
     try {
-      debugPrint('[Compound] HTTP GET: $url');
+      debugPrint('[PubChem] HTTP GET: $url');
       final response = await http.get(Uri.parse(url));
-      debugPrint('[Compound] HTTP response: ${response.statusCode}');
-      if (response.statusCode == 404) return null;
-      if (response.statusCode != 200) return null;
-      return json.decode(response.body) as Map<String, dynamic>;
-    } catch (e) {
-      debugPrint('[Compound] HTTP error: $e');
+      debugPrint('[PubChem] HTTP status: ${response.statusCode}');
+      debugPrint('[PubChem] HTTP response body: ${response.body}');
+      if (response.statusCode == 404) {
+        debugPrint('[PubChem] HTTP 404 for URL: $url');
+        return null;
+      }
+      if (response.statusCode != 200) {
+        debugPrint('[PubChem] HTTP non-200 response (${response.statusCode}) for URL: $url');
+        return null;
+      }
+      final decoded = json.decode(response.body) as Map<String, dynamic>;
+      debugPrint('[PubChem] HTTP JSON top-level keys: ${decoded.keys.toList()}');
+      return decoded;
+    } catch (e, stack) {
+      debugPrint('[PubChem] HTTP error: $e');
+      debugPrint('[PubChem] HTTP stack: $stack');
       return null;
     }
   }
