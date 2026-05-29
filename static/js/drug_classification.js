@@ -71,7 +71,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
   const CLASS_ICONS = { 0:"🦁", 1:"🦠", 2:"🌊", 3:"🍄", 4:"🌿" };
 
-  const SMILES_CHARS  = new Set("CNOSPFBrIlc()[]=@+-.#\\/0123456789%");
+  const SMILES_CHARS  = new Set("CNOSPFBrIlcnospfbh()[]=@+-.#\\/0123456789%");
   const CAS_REGEX     = /^\d{2,7}-\d{2}-\d$/;
   const INCHIKEY_REGEX= /^[A-Z]{14}-[A-Z]{10}-[A-Z]$/;
 

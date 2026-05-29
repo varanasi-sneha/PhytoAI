@@ -286,7 +286,7 @@ class DrugClassificationService:
 
     _CAS_RE    = re.compile(r'^\d{2,7}-\d{2}-\d$')
     _INCHI_RE  = re.compile(r'^[A-Z]{14}-[A-Z]{10}-[A-Z]$')
-    _SMILES_CHR= set("CNOSPFBrIlc()[]=@+-.#\\/0123456789%")
+    _SMILES_CHR= set("CNOSPFBrIlcnospfbh()[]=@+-.#\\/0123456789%")
 
     @classmethod
     def detect_input_type(cls, text: str) -> str:
