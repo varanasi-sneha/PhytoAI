@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body>
+<script>
+  // ── Log helper: sends logs back to Flutter ──────────────────────────
+  function flutterLog(msg) {
+    if (window.RDKitLog) {
+      window.RDKitLog.postMessage(String(msg));
+    }
+  }
+
+  flutterLog('HTML loaded, starting RDKit init...');
+</script>
+
+<script src="https://unpkg.com/@rdkit/rdkit/dist/RDKit_minimal.js"
+        onload="flutterLog('RDKit_minimal.js script tag loaded')"
+        onerror="flutterLog('ERROR: Failed to load RDKit_minimal.js from CDN')">
+</script>
+
+<script>
+  flutterLog('Calling initRDKitModule()...');
+
+  initRDKitModule().then(function(RDKit) {
+    window.RDKitInstance = RDKit;
+    flutterLog('RDKit WASM initialized successfully! Version: ' + RDKit.version());
+
+    // Signal Flutter that RDKit is ready
+    if (window.RDKitReady) {
+      window.RDKitReady.postMessage('ready');
+    }
+
+  }).catch(function(err) {
+    flutterLog('ERROR: initRDKitModule failed: ' + err);
+  });
+
+  // ── Fingerprint generation ───────────────────────────────────────────
+  function generateFingerprint(smiles) {
+    try {
+      flutterLog('generateFingerprint called with: ' + smiles);
+
+      if (!window.RDKitInstance) {
+        flutterLog('ERROR: RDKitInstance is null');
+        return JSON.stringify({ error: 'RDKit not initialized' });
+      }
+
+      var mol = window.RDKitInstance.get_mol(smiles);
+      if (!mol || !mol.is_valid()) {
+        flutterLog('ERROR: Invalid SMILES: ' + smiles);
+        return JSON.stringify({ error: 'Invalid SMILES: ' + smiles });
+      }
+
+      // ECFP4 (Morgan r=2, 1024 bits)
+      var mfpDetails = JSON.stringify({ radius: 2, nBits: 1024 });
+      var mfpBitStr  = mol.get_morgan_fp(mfpDetails);
+      flutterLog('ECFP4 length: ' + mfpBitStr.length);
+
+      var ecfp = [];
+      for (var i = 0; i < mfpBitStr.length; i++) {
+        ecfp.push(mfpBitStr[i] === '1' ? 1.0 : 0.0);
+      }
+
+      // MACCS keys (167 bits)
+      var maccsBitStr = mol.get_maccs_fp();
+      flutterLog('MACCS length: ' + maccsBitStr.length);
+
+      var maccs = [];
+      for (var i = 0; i < maccsBitStr.length; i++) {
+        maccs.push(maccsBitStr[i] === '1' ? 1.0 : 0.0);
+      }
+
+      mol.delete();
+
+      if (ecfp.length !== 1024) {
+        return JSON.stringify({ error: 'ECFP length mismatch: ' + ecfp.length });
+      }
+      if (maccs.length !== 167) {
+        return JSON.stringify({ error: 'MACCS length mismatch: ' + maccs.length });
+      }
+
+      var combined = ecfp.concat(maccs); // 1191 total
+      flutterLog('Fingerprint generated successfully, length: ' + combined.length);
+      return JSON.stringify({ fingerprint: combined });
+
+    } catch(e) {
+      flutterLog('ERROR in generateFingerprint: ' + e.toString());
+      return JSON.stringify({ error: e.toString() });
+    }
+  }
+</script>
+</body>
+</html>

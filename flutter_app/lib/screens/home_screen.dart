@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../auth_service.dart';
 import '../app_state.dart';
+import '../ml/rdkit_webview_service.dart';
 import 'prediction_screen.dart';
 import 'history_screen.dart';
 import 'profile_screen.dart';
@@ -17,7 +18,12 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
-
+  @override
+  void initState() {
+  super.initState();
+  // Reset RDKit service so WebView remounts cleanly after hot restart
+  RDKitWebViewService.instance.reset();
+}
   static const List<Widget> _screens = [
     PredictionScreen(),
     DrugClassificationScreen(),
@@ -48,86 +54,93 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-
-      backgroundColor: const Color(0xFFF4F7F5),
-
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.green.shade700,
-
-        title: Text(
-          _titles[_selectedIndex],
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            letterSpacing: 0.5,
-          ),
+    return Stack(
+      children: [
+        // ── Hidden RDKit WebView (1×1 px, off-screen) ──────────────────
+        // This boots the RDKit.js WASM once and keeps it alive for the
+        // entire app session. CompoundFingerprintGenerator talks to it.
+        Positioned(
+          left: -10,
+          top: -10,
+          child: RDKitWebViewService.instance.buildHiddenWebView(),
         ),
 
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
-            onPressed: _logout,
-          ),
-        ],
-      ),
+        // ── Main app Scaffold ───────────────────────────────────────────
+        Scaffold(
+          backgroundColor: const Color(0xFFF4F7F5),
 
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _screens,
-      ),
+          appBar: AppBar(
+            elevation: 0,
+            backgroundColor: Colors.green.shade700,
 
-      bottomNavigationBar: Container(
-
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 12,
+            title: Text(
+              _titles[_selectedIndex],
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
             ),
-          ],
-        ),
 
-        child: BottomNavigationBar(
-
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-
-          type: BottomNavigationBarType.fixed,
-
-          backgroundColor: Colors.white,
-
-          selectedItemColor: Colors.green.shade700,
-          unselectedItemColor: Colors.grey,
-
-          selectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.bold,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.logout_rounded),
+                onPressed: _logout,
+              ),
+            ],
           ),
 
-          items: const [
+          body: IndexedStack(
+            index: _selectedIndex,
+            children: _screens,
+          ),
 
-            BottomNavigationBarItem(
-              icon: Icon(Icons.eco),
-              label: 'Detect',
+          bottomNavigationBar: Container(
+            decoration: BoxDecoration(
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 12,
+                ),
+              ],
             ),
 
-            BottomNavigationBarItem(
-              icon: Icon(Icons.science),
-              label: 'Drugs',
-            ),
+            child: BottomNavigationBar(
+              currentIndex: _selectedIndex,
+              onTap: _onItemTapped,
 
-            BottomNavigationBarItem(
-              icon: Icon(Icons.history),
-              label: 'History',
-            ),
+              type: BottomNavigationBarType.fixed,
 
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person),
-              label: 'Profile',
+              backgroundColor: Colors.white,
+
+              selectedItemColor: Colors.green.shade700,
+              unselectedItemColor: Colors.grey,
+
+              selectedLabelStyle: const TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+
+              items: const [
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.eco),
+                  label: 'Detect',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.science),
+                  label: 'Drugs',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.history),
+                  label: 'History',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.person),
+                  label: 'Profile',
+                ),
+              ],
             ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }

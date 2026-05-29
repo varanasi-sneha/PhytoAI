@@ -2,9 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../api_service.dart';
 import '../services/cache_service.dart';
+import '../services/compound_classification_service.dart';
 import '../services/error_service.dart';
+import '../api_service.dart';
 
 class DrugClassificationScreen extends StatefulWidget {
   const DrugClassificationScreen({Key? key}) : super(key: key);
@@ -50,13 +51,13 @@ class _DrugClassificationScreenState extends State<DrugClassificationScreen> {
     });
 
     try {
-      final apiService = context.read<ApiService>();
-      final response = await apiService.classifyDrug(input, confirmMedicine: _confirmMedicine);
+      final classifier = context.read<CompoundClassificationService>();
+      final response = await classifier.classifyCompound(input, confirmMedicine: _confirmMedicine);
 
       setState(() {
         _result = response;
         if (response['status'] == 'medicine_detected') {
-          _currentMedicineSmiles = response['smiles'];
+          _currentMedicineSmiles = response['smiles'] as String?;
         }
         _confirmMedicine = false; // Reset for next use
       });

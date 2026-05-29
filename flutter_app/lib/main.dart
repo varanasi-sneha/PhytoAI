@@ -6,6 +6,7 @@ import 'api_service.dart';
 import 'app_state.dart';
 import 'auth_service.dart';
 import 'services/cache_service.dart';
+import 'services/compound_classification_service.dart';
 import 'services/local_inference_service.dart';
 import 'services/network_service.dart';
 import 'services/local_profile_service.dart';
@@ -27,6 +28,10 @@ void main() async {
   final networkService = NetworkService();
   final localInferenceService = LocalInferenceService(cacheService: cacheService);
   await localInferenceService.initialize();
+  final compoundClassificationService = CompoundClassificationService(
+    cacheService: cacheService,
+    networkService: networkService,
+  );
 
   runApp(
     MultiProvider(
@@ -45,6 +50,10 @@ void main() async {
 
         Provider<LocalInferenceService>.value(
           value: localInferenceService,
+        ),
+
+        Provider<CompoundClassificationService>.value(
+          value: compoundClassificationService,
         ),
 
         Provider<LocalProfileService>(
