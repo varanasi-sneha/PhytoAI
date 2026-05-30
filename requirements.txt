@@ -15,3 +15,5 @@ numpy
 lightgbm
 opencv-python
 scikit-learn
+gunicorn
+python-dotenv
