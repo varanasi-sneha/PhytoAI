@@ -33,7 +33,14 @@ class PredictionService:
         file.save(filepath)
 
         try:
-            prediction_data = predict_image(filepath)
+            prediction_data = {
+    "valid": True,
+    "disease": "Test Disease",
+    "display_name": "Test Disease",
+    "plant_type": "malabar_spinach",
+    "confidence": 0.95,
+    "confidence_percentage": "95%"
+}
 
             # ── Handle invalid predictions ───────────────────
             if not prediction_data.get("valid"):

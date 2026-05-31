@@ -6,7 +6,8 @@ Data flow:
   2. supabase_auth_required middleware validates JWT → injects current_user
   3. PredictionService.process_prediction(file)
        → calls predict.py → MobileNetV3 model inference
-       → returns (dict, 200) or (dict, 422)
+       → returns (dict, 200) or (dict, 422load
+       
   4. On 200: upsert user + insert scan_history row
   5. On non-200: return error JSON immediately (no DB write)
 

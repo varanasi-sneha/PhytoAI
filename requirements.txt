@@ -6,8 +6,6 @@ Werkzeug
 Pillow
 supabase
 opencv-python
-numpy
-scikit-learn
 scipy
 rdkit
 joblib
