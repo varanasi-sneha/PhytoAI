@@ -67,12 +67,20 @@ def predict(current_user):
     try:
         logger.info(f"Saving prediction to database: {prediction_data.get('disease')}")
         
-        # Upsert user record
-        supabase.table("users").upsert({
-            "id":    current_user.id,
-            "email": current_user.email,
-            "name":  current_user.user_metadata.get("full_name")
-        }, on_conflict="id").execute()
+        # Upsert a `profiles` record so client reads from the expected table.
+        try:
+            full_name = current_user.user_metadata.get("full_name") or ""
+            first_name = full_name.split(" ")[0] if full_name else ""
+            last_name = full_name.split(" ")[-1] if full_name and len(full_name.split(" ")) > 1 else ""
+            supabase.table("profiles").upsert({
+                "user_id": current_user.id,
+                "email": current_user.email,
+                "first_name": first_name,
+                "last_name": last_name
+            }, on_conflict="user_id").execute()
+        except Exception:
+            # best-effort: continue if profile upsert fails
+            pass
 
         # Save to scan_history — now includes plant_type and display_name
         supabase.table('scan_history').insert({

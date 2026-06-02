@@ -9,8 +9,8 @@ import 'package:provider/provider.dart';
 import '../models/models.dart';
 import '../services/error_service.dart';
 import '../services/local_inference_service.dart';
-import '../services/local_history_service.dart';
-import '../data/local_prevention_data.dart'; // ← add this file to lib/data/
+import '../services/supabase_history_service.dart';
+import '../data/local_prevention_data.dart';
 
 class PredictionScreen extends StatefulWidget {
   const PredictionScreen({Key? key}) : super(key: key);
@@ -26,7 +26,6 @@ class _PredictionScreenState extends State<PredictionScreen> {
   bool _isLoading = false;
   String? _errorMessage;
 
-  // Prevention is now loaded synchronously from local data — no loading state needed.
   Map<String, dynamic>? _preventionData;
   String? _preventionError;
 
@@ -103,20 +102,21 @@ class _PredictionScreenState extends State<PredictionScreen> {
 
         setState(() => _result = result);
 
-        // ── Persist to local history ────────────────────────────────────────
+        // ── Persist to history (local + Supabase) ───────────────────────
         try {
-          final localHistory = context.read<LocalHistoryService>();
-          await localHistory.addHistoryItem({
-            'id': localHistory.makeId(),
+          final historyService = context.read<SupabaseHistoryService>();
+          await historyService.saveHistoryItem({
             'prediction': result.disease,
             'display_name': result.displayName,
             'confidence': result.confidence,
             'plant_type': result.plantType,
             'created_at': DateTime.now().toIso8601String(),
           });
-        } catch (_) {}
+        } catch (e, st) {
+          debugPrint('SAVE ERROR: $e\n$st');
+        }
 
-        // ── Load prevention locally (instant, no network) ──────────────────
+        // ── Load prevention locally (instant, no network) ──────────────
         final isRejected = result.disease == 'not_a_spinach_leaf' ||
             result.disease == 'unclear_image';
         final isHealthy = result.disease.toLowerCase() == 'healthy_leaf';
@@ -134,7 +134,7 @@ class _PredictionScreenState extends State<PredictionScreen> {
     }
   }
 
-  // ─── Prevention (fully local, synchronous) ───────────────────────────────────
+  // ─── Prevention (fully local, synchronous) ──────────────────────────────────
 
   void _loadLocalPrevention(String diseaseName) {
     final data = LocalPreventionData.getFor(diseaseName);
@@ -253,18 +253,6 @@ class _PredictionScreenState extends State<PredictionScreen> {
             const Text(
               'Take a photo or upload an image to detect diseases',
               style: TextStyle(color: Colors.grey),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              context.watch<LocalInferenceService>().hasPlantModel
-                  ? '✓ Offline AI model ready'
-                  : 'Offline AI model not available',
-              style: TextStyle(
-                  color: context.watch<LocalInferenceService>().hasPlantModel
-                      ? Colors.green.shade700
-                      : Colors.orange.shade700,
-                  fontSize: 14),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -396,8 +384,8 @@ class _PredictionScreenState extends State<PredictionScreen> {
                         decoration: BoxDecoration(
                             color: Colors.green.shade50,
                             shape: BoxShape.circle),
-                        child:
-                            const Icon(Icons.eco, color: Colors.green, size: 28),
+                        child: const Icon(Icons.eco,
+                            color: Colors.green, size: 28),
                       ),
                       const SizedBox(width: 12),
                       const Text('Analysis Result',
@@ -449,7 +437,8 @@ class _PredictionScreenState extends State<PredictionScreen> {
                           children: [
                             Text('Confidence',
                                 style: TextStyle(
-                                    color: Colors.grey.shade700, fontSize: 13)),
+                                    color: Colors.grey.shade700,
+                                    fontSize: 13)),
                             const SizedBox(height: 4),
                             Text(
                               '${(_result!.confidence * 100).toStringAsFixed(1)}%',
@@ -472,14 +461,16 @@ class _PredictionScreenState extends State<PredictionScreen> {
                           color: Colors.blue.shade50,
                           borderRadius: BorderRadius.circular(16)),
                       child: Row(children: [
-                        Icon(Icons.local_florist, color: Colors.blue.shade700),
+                        Icon(Icons.local_florist,
+                            color: Colors.blue.shade700),
                         const SizedBox(width: 12),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text('Plant Type',
                                 style: TextStyle(
-                                    color: Colors.grey.shade700, fontSize: 13)),
+                                    color: Colors.grey.shade700,
+                                    fontSize: 13)),
                             const SizedBox(height: 4),
                             Text(
                               _result!.plantType,
@@ -497,7 +488,7 @@ class _PredictionScreenState extends State<PredictionScreen> {
                     if (_result!.distribution != null)
                       _buildDistributionChart(_result!.distribution!),
 
-                    // Prevention guide button (appears instantly when data is ready)
+                    // Prevention guide button
                     if (_preventionData != null) ...[
                       const SizedBox(height: 24),
                       SizedBox(
@@ -507,7 +498,8 @@ class _PredictionScreenState extends State<PredictionScreen> {
                           icon: const Icon(Icons.health_and_safety),
                           label: const Text('View Prevention Guide',
                               style: TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.bold)),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold)),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green.shade700,
                             foregroundColor: Colors.white,
@@ -519,7 +511,7 @@ class _PredictionScreenState extends State<PredictionScreen> {
                       ),
                     ],
 
-                    // Prevention error (non-crashing, just informational)
+                    // Prevention error
                     if (_preventionError != null) ...[
                       const SizedBox(height: 16),
                       Container(
@@ -528,8 +520,8 @@ class _PredictionScreenState extends State<PredictionScreen> {
                             color: Colors.orange.shade50,
                             borderRadius: BorderRadius.circular(12)),
                         child: Text(_preventionError!,
-                            style:
-                                TextStyle(color: Colors.orange.shade800)),
+                            style: TextStyle(
+                                color: Colors.orange.shade800)),
                       ),
                     ],
                   ],
@@ -542,7 +534,7 @@ class _PredictionScreenState extends State<PredictionScreen> {
     );
   }
 
-  // ─── Prevention Popup ─────────────────────────────────────────────────────────
+  // ─── Prevention Popup ────────────────────────────────────────────────────────
 
   void _showPreventionPopup() {
     if (_preventionData == null) return;
@@ -604,7 +596,8 @@ class _PredictionScreenState extends State<PredictionScreen> {
                         if (_preventionData!['description'] != null) ...[
                           Text(
                             _preventionData!['description'].toString(),
-                            style: const TextStyle(fontSize: 15, height: 1.6),
+                            style:
+                                const TextStyle(fontSize: 15, height: 1.6),
                           ),
                           const SizedBox(height: 24),
                         ],

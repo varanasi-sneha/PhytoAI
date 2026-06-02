@@ -21,14 +21,11 @@ class CompoundOnnxService {
     String modelAssetPath = 'assets/models/np_classifier_v7_2_int8.onnx',
   }) async {
     if (_initialized) {
-      debugPrint('[CompoundONNX] Already initialized, skipping');
       return;
     }
 
-    debugPrint('[CompoundONNX] Loading model from: $modelAssetPath');
     try {
       final byteData = await rootBundle.load(modelAssetPath);
-      debugPrint('[CompoundONNX] Asset size: ${byteData.lengthInBytes} bytes');
 
       final modelBytes = byteData.buffer.asUint8List(
         byteData.offsetInBytes,
@@ -43,12 +40,8 @@ class CompoundOnnxService {
 
       try {
         OrtEnv.instance.init();
-        debugPrint('[CompoundONNX] OrtEnv initialized');
         _session = OrtSession.fromBuffer(modelBytes, sessionOptions);
         _initialized = true;
-        debugPrint('[CompoundONNX] ✅ Session created');
-        debugPrint('[CompoundONNX] Input names: ${_session!.inputNames}');
-        debugPrint('[CompoundONNX] Output names: ${_session!.outputNames}');
       } catch (e) {
         _initialized = false;
         debugPrint('[CompoundONNX] ❌ Session creation failed: $e');
@@ -65,8 +58,6 @@ class CompoundOnnxService {
   bool get isInitialized => _initialized;
 
   Future<List<double>> runInference(Float32List inputTensor) async {
-    debugPrint('[CompoundONNX] runInference called, initialized=$_initialized');
-
     if (!_initialized || _session == null) {
       throw Exception('model_uninitialized');
     }
@@ -80,7 +71,6 @@ class CompoundOnnxService {
     final inputName = _session!.inputNames.isNotEmpty
         ? _session!.inputNames.first
         : 'input';
-    debugPrint('[CompoundONNX] Using input name: $inputName');
 
     final ortValue = OrtValueTensor.createTensorWithDataList(inputTensor, [
       1,
@@ -89,9 +79,7 @@ class CompoundOnnxService {
     final runOptions = OrtRunOptions();
 
     try {
-      debugPrint('[CompoundONNX] Running inference...');
       final outputs = _session!.run(runOptions, {inputName: ortValue});
-      debugPrint('[CompoundONNX] Outputs count: ${outputs.length}');
 
       if (outputs.isEmpty) {
         throw Exception('inference_failed: empty outputs');
@@ -161,13 +149,6 @@ class CompoundOnnxService {
         candidates.addAll(collectCandidates(outputValue));
       }
 
-      debugPrint('[CompoundONNX] Candidate count: ${candidates.length}');
-      for (final candidate in candidates) {
-        debugPrint(
-          '[CompoundONNX] Candidate length=${candidate.length}: $candidate',
-        );
-      }
-
       final List<double> rawOutput = candidates.firstWhere(
         (candidate) => candidate.length == 5,
         orElse: () => candidates.isNotEmpty ? candidates.first : [],
@@ -177,16 +158,12 @@ class CompoundOnnxService {
         throw Exception('inference_failed: no numeric output found');
       }
 
-      debugPrint('[CompoundONNX] Raw output length: ${rawOutput.length}');
-      debugPrint('[CompoundONNX] Raw output values: $rawOutput');
-
       if (rawOutput.length != 5) {
         throw Exception(
           'unexpected_output_length: expected 5 got ${rawOutput.length}',
         );
       }
 
-      debugPrint('[CompoundONNX] ✅ Inference complete: $rawOutput');
       return rawOutput;
     } finally {
       ortValue.release();
@@ -199,6 +176,5 @@ class CompoundOnnxService {
     _session = null;
     _initialized = false;
     OrtEnv.instance.release();
-    debugPrint('[CompoundONNX] Disposed');
   }
 }

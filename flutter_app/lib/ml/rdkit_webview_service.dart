@@ -22,7 +22,6 @@ class RDKitWebViewService {
   Widget buildHiddenWebView() {
     // ── Only build once — reuse existing controller on rebuild ──
     if (_widgetBuilt && _controller != null) {
-      debugPrint('[RDKit] WebView already built, reusing controller');
       return SizedBox(
         width: 1,
         height: 1,
@@ -33,14 +32,11 @@ class RDKitWebViewService {
     _widgetBuilt = true;
     _readyCompleter ??= Completer<void>();
 
-    debugPrint('[RDKit] Building hidden WebView...');
-
     final controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..addJavaScriptChannel(
         'RDKitReady',
         onMessageReceived: (msg) {
-          debugPrint('[RDKit] ✅ WASM ready signal received');
           _ready = true;
           if (!(_readyCompleter?.isCompleted ?? true)) {
             _readyCompleter!.complete();
@@ -53,14 +49,10 @@ class RDKitWebViewService {
       )
       ..addJavaScriptChannel(
         'RDKitLog',
-        onMessageReceived: (msg) {
-          debugPrint('[RDKit JS] ${msg.message}');
-        },
+        onMessageReceived: (_) {},
       )
       ..setNavigationDelegate(NavigationDelegate(
-        onPageFinished: (url) {
-          debugPrint('[RDKit] Page finished loading: $url');
-        },
+        onPageFinished: (url) {},
         onWebResourceError: (error) {
           debugPrint('[RDKit] WebResource error: ${error.description}');
         },
@@ -68,8 +60,6 @@ class RDKitWebViewService {
       ..loadFlutterAsset('assets/rdkit/rdkit_bridge.html');
 
     _controller = controller;
-
-    debugPrint('[RDKit] WebView controller created, loading HTML asset...');
 
     return SizedBox(
       width: 1,
@@ -95,7 +85,6 @@ class RDKitWebViewService {
       );
     }
 
-    debugPrint('[RDKit] Waiting for WASM to load (timeout: ${timeout.inSeconds}s)...');
     _readyCompleter ??= Completer<void>();
 
     await _readyCompleter!.future.timeout(
@@ -120,8 +109,6 @@ class RDKitWebViewService {
       );
     }
 
-    debugPrint('[RDKit] generateFingerprint called for SMILES: "$smiles"');
-    debugPrint('[RDKit] WebView ready state: $_ready');
     await waitUntilReady();
 
     final id = _callId++;
@@ -160,7 +147,6 @@ class RDKitWebViewService {
 
   void _handleResult(String message) {
     try {
-      debugPrint('[RDKit] FingerprintResult received, raw length=${message.length}');
       final outer = jsonDecode(message) as Map<String, dynamic>;
       final id = outer['id'] as int;
       final completer = _pending.remove(id);
@@ -170,7 +156,6 @@ class RDKitWebViewService {
       }
 
       final String dataStr = outer['data'] as String;
-      debugPrint('[RDKit] validation payload: $dataStr');
       final inner = jsonDecode(dataStr) as Map<String, dynamic>;
 
       if (inner.containsKey('error')) {
@@ -185,7 +170,6 @@ class RDKitWebViewService {
       }
 
       final List<dynamic> fpList = inner['fingerprint'] as List<dynamic>;
-      debugPrint('[RDKit] fingerprint list returned, length=${fpList.length}');
 
       if (fpList.length != 1191) {
         completer.completeError(AppError(
@@ -200,7 +184,6 @@ class RDKitWebViewService {
       final fp = Float32List.fromList(
         fpList.map((e) => (e as num).toDouble()).toList(),
       );
-      debugPrint('[RDKit] ✅ Fingerprint complete, passing to ONNX');
       completer.complete(fp);
     } catch (e) {
       debugPrint('[RDKit] _handleResult error: $e');
@@ -214,6 +197,5 @@ class RDKitWebViewService {
     _controller = null;
     _readyCompleter = null;
     _pending.clear();
-    debugPrint('[RDKit] Service reset');
   }
 }

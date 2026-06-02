@@ -7,8 +7,10 @@ class AuthService {
 
   User? get currentUser => _supabase.auth.currentUser;
 
+  /// Sign up and create a minimal profile row so newly created accounts
+  /// immediately have profile data available to the app.
   Future<AuthResponse> signUp(String email, String password, String firstName, String lastName) async {
-    return await _supabase.auth.signUp(
+    final response = await _supabase.auth.signUp(
       email: email,
       password: password,
       data: {
@@ -17,6 +19,24 @@ class AuthService {
         'full_name': '$firstName $lastName',
       },
     );
+
+    // Ensure a profiles row exists so the profile screen has consistent data.
+    try {
+      final user = response.user;
+      if (user != null) {
+        await _supabase.from('profiles').upsert({
+          'id': user.id,
+          'name': '$firstName $lastName',
+          'email': user.email,
+          'first_name': firstName,
+          'last_name': lastName,
+        }, onConflict: 'id');
+      }
+    } catch (_) {
+      // best-effort upsert failed; ignore silently in production.
+    }
+
+    return response;
   }
 
   Future<AuthResponse> signIn(String email, String password) async {
@@ -24,11 +44,6 @@ class AuthService {
       email: email,
       password: password,
     );
-
-    final session = _supabase.auth.currentSession;
-
-    print("ACCESS TOKEN:");
-    print(session?.accessToken);
 
     return response;
   }

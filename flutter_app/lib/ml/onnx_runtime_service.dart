@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:image/image.dart' as img;
 import 'package:onnxruntime/onnxruntime.dart';
@@ -35,20 +36,15 @@ class OnnxRuntimeService {
 
   Future<void> init(String assetPath) async {
     if (_initialized) {
-      print("[ONNX] Already initialized.");
       return;
     }
 
-    print("[ONNX] Loading ONNX model... Path: $assetPath");
     try {
       final byteData = await rootBundle.load(assetPath);
       final modelBytes = byteData.buffer.asUint8List(
         byteData.offsetInBytes,
         byteData.lengthInBytes,
       );
-      print("🔹 Trying to load asset: $assetPath");
-      print("🔹 Asset size: ${byteData.lengthInBytes}");
-      print("[ONNX] Asset loaded successfully. Byte size: ${modelBytes.length}. Creating session...");
 
       OrtEnv.instance.init();
       final sessionOptions = OrtSessionOptions();
@@ -58,17 +54,16 @@ class OnnxRuntimeService {
       try {
         _session = OrtSession.fromBuffer(modelBytes, sessionOptions);
         _initialized = true;
-        print("[ONNX] Session created successfully. Model is ready for offline inference.");
       } catch (e) {
         _initialized = false;
-        print("[ONNX] Error creating session from buffer: $e");
+        debugPrint('[ONNX] Error creating session from buffer: $e');
         rethrow;
       } finally {
         sessionOptions.release();
       }
     } catch (e) {
       _initialized = false;
-      print("[ONNX] Model initialization failed: $e");
+      debugPrint('[ONNX] Model initialization failed: $e');
       rethrow;
     }
   }
@@ -109,10 +104,6 @@ class OnnxRuntimeService {
         }
       }
     }
-
-    print('[ONNX] Input tensor shape: [1,3,224,224]');
-    print('[ONNX] Input tensor min: $minValue, max: $maxValue');
-    print('[ONNX] First 10 tensor values: $firstValues');
 
     return input;
   }
@@ -219,23 +210,18 @@ class OnnxRuntimeService {
   // ── Main predict ──────────────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> predict(File imageFile) async {
-    print("[ONNX] Starting prediction for: ${imageFile.path}");
-
     if (!_initialized || _session == null) {
-      print("[ONNX] Error: model not initialized");
       throw Exception('model_uninitialized');
     }
 
     // 1. Blur estimation
     final blurScore = await _estimateBlur(imageFile);
     final isBlurry  = blurScore < _blurThreshold;
-    print("[ONNX] Blur estimation: score = $blurScore, isBlurry = $isBlurry");
 
     // 2. Leaf colour gate (fast OOD check before model inference)
     final rawBytes     = await imageFile.readAsBytes();
     final originalImage = img.decodeImage(rawBytes);
     final hasLeafColour = originalImage != null && _hasLeafColour(originalImage);
-    print("[ONNX] Leaf colour check: $hasLeafColour");
 
     if (!hasLeafColour) {
       throw AppError(
@@ -252,34 +238,17 @@ class OnnxRuntimeService {
     try {
       inputTensor = await _preprocess(imageFile);
     } catch (e) {
-      print("[ONNX] Preprocessing failed: $e");
       throw Exception('invalid_image');
     }
 
     // 4. Tensor creation and inference
     final inputOrt  = OrtValueTensor.createTensorWithDataList(inputTensor, [1, 3, 224, 224]);
     final inputName = _session!.inputNames.isNotEmpty ? _session!.inputNames.first : 'input';
-    print('[ONNX] Session input names: ${_session!.inputNames}');
-    print('[ONNX] Using input name: $inputName');
-
-    // Debug: input tensor stats
-    final int channelSize = 224 * 224;
-    for (int c = 0; c < 3; c++) {
-      double minV = double.infinity, maxV = double.negativeInfinity, sum = 0.0;
-      for (int i = 0; i < channelSize; i++) {
-        final v = inputTensor[c * channelSize + i];
-        if (v < minV) minV = v;
-        if (v > maxV) maxV = v;
-        sum += v;
-      }
-      print('[ONNX] Channel $c — min: $minV, max: $maxV, mean: ${sum / channelSize}');
-    }
 
     final inputs     = {inputName: inputOrt};
     final runOptions = OrtRunOptions();
 
     try {
-      print("[ONNX] Running ONNX inference session...");
       final outputs = _session!.run(runOptions, inputs);
 
       if (outputs.isEmpty || outputs.first == null) {
@@ -287,7 +256,6 @@ class OnnxRuntimeService {
       }
 
       final dynamic outputData = outputs.first!.value;
-      print("🔥 RAW OUTPUT: $outputData  TYPE: ${outputData.runtimeType}");
 
       // Parse logits
       List<double> logits = [];
@@ -300,14 +268,12 @@ class OnnxRuntimeService {
       } else {
         throw Exception('inference_failed');
       }
-      print("[ONNX] Parsed logits: $logits");
 
       // 5. Softmax over all 6 outputs
       final maxLogit = logits.reduce((a, b) => a > b ? a : b);
       final exps     = logits.map((l) => math.exp(l - maxLogit)).toList();
       final sumExps  = exps.reduce((a, b) => a + b);
       final probs6   = exps.map((e) => e / sumExps).toList();
-      print("[ONNX] 6-class probabilities: $probs6");
 
       // 6. Split OOD class (index 5) from disease classes (indices 0-4)
       final double oodProb;
@@ -326,7 +292,6 @@ class OnnxRuntimeService {
       for (final p in probs6) {
         if (p > 0) entropy -= p * math.log(p);
       }
-      print("[ONNX] Entropy: $entropy, OOD probability: $oodProb");
 
       // 8. OOD gate — matches predict.py logic exactly
       if (oodProb > _oodProbThresh || entropy > _oodEntropyThresh) {
@@ -342,7 +307,6 @@ class OnnxRuntimeService {
       // 9. Re-normalise 5 disease probs (so they sum to 1 independent of OOD logit)
       final sumProbs  = probs5.reduce((a, b) => a + b);
       final probsNorm = probs5.map((p) => sumProbs > 0 ? p / sumProbs : 0.0).toList();
-      print("[ONNX] Normalized 5-class probabilities: $probsNorm");
 
       // 10. Top prediction
       var topIdx  = 0;
@@ -354,7 +318,6 @@ class OnnxRuntimeService {
         }
       }
       final label = classNames.length > topIdx ? classNames[topIdx] : 'unknown';
-      print("[ONNX] Predicted label: $label with confidence $topProb");
 
       // 11. Blurry + low-confidence combined → reject (matches predict.py step 7)
       // if (isBlurry && topProb < _confidenceThresh) {
@@ -369,9 +332,6 @@ class OnnxRuntimeService {
       // }
 
       // Only warn, don't reject
-      if (isBlurry && topProb < _confidenceThresh) {
-        print("[ONNX] Warning: blurry + low confidence");
-      }
 
       // 12. Build distribution map
       final distribution = Map.fromIterables(
@@ -409,7 +369,7 @@ class OnnxRuntimeService {
         'message':               message,
       };
     } catch (e) {
-      print("[ONNX] Prediction failed: $e");
+      debugPrint('[ONNX] Prediction failed: $e');
       rethrow;
     } finally {
       inputOrt.release();

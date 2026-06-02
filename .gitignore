@@ -1,3 +1,12 @@
 __pycache__/
 *.pyc
 .env
+flutter_app/pubspec.yaml
+flutter_app/pubspec.lock
+flutter_app/windows/flutter/generated_plugins.cmake
+flutter_app/windows/flutter/generated_plugin_registrant.h
+flutter_app/windows/flutter/generated_plugin_registrant.cc
+flutter_app/macos/Flutter/GeneratedPluginRegistrant.swift
+flutter_app/linux/flutter/generated_plugins.cmake
+flutter_app/linux/flutter/generated_plugin_registrant.h
+flutter_app/linux/flutter/generated_plugin_registrant.cc

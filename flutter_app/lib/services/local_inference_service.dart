@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 import '../ml/onnx_runtime_service.dart';
 import 'cache_service.dart';
 import 'error_service.dart';
@@ -35,18 +37,13 @@ class LocalInferenceService {
   /// modelPath should be the asset path to plant_model.onnx
   Future<void> initialize({String? modelPath}) async {
     _modelPath = modelPath ?? 'assets/models/plant_model.onnx';
-    print("[LocalInferenceService] Starting local ONNX model load from path: $_modelPath");
     try {
       await OnnxRuntimeService.instance.init(_modelPath!);
       _plantModelLoaded = true;
-      print("[LocalInferenceService] Local ONNX model loaded successfully!");
     } catch (e, stackTrace) {
       _plantModelLoaded = false;
-
-      print("❌ MODEL INIT FAILED");
-      print("❌ ERROR: $e");
-      print("❌ STACK: $stackTrace");
-
+      debugPrint('LocalInferenceService failed to initialize model: $e');
+      debugPrint('$stackTrace');
       rethrow; // 🔥 THIS IS CRITICAL
     }
   }

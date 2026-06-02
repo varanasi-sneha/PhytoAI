@@ -5,7 +5,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../auth_service.dart';
 import '../services/cache_service.dart';
+import '../services/local_history_service.dart';
+import '../services/supabase_history_service.dart';
 import '../services/supabase_profile_service.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -17,6 +20,9 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   SupabaseProfileService? _profileService;
+  SupabaseHistoryService? _historyService;
+  CacheService? _cacheService;
+  AuthService? _authService;
   final _picker = ImagePicker();
 
   String? _firstName;
@@ -27,6 +33,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   bool _loading = true;
   bool _uploadingPhoto = false;
+  bool _isDeleting = false;
   String? _error;
 
   @override
@@ -38,6 +45,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _initAndLoad() async {
     final cache = CacheService();
     await cache.init();
+    _cacheService = cache;
+    _authService = AuthService();
+    final localHistory = LocalHistoryService(cache: cache);
+    _historyService = SupabaseHistoryService(
+      cache: cache,
+      localHistoryService: localHistory,
+    );
     _profileService = SupabaseProfileService(cache: cache);
     await _loadProfile();
   }
@@ -51,6 +65,60 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _error = 'Failed to load profile.';
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _deleteAccountData() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Account'),
+        content: const Text(
+          'This will remove your profile information, scan history, and app data for your account. This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() {
+      _isDeleting = true;
+      _error = null;
+    });
+
+    try {
+      await _historyService?.clearHistory();
+      await _profileService?.deleteAccountData();
+      await _cacheService?.clearAll();
+      await _authService?.signOut();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Account data deleted successfully.')),
+      );
+      if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
+    } catch (e) {
+      if (mounted) {
+        setState(() { _error = 'Delete failed: $e'; });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Delete failed: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() { _isDeleting = false; });
     }
   }
 
@@ -121,7 +189,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (source == null || !mounted) return;
 
     if (source == _PhotoAction.remove) {
-      setState(() { _avatarUrl = null; _localAvatar = null; });
+      final removeConfirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Remove Photo'),
+            content: const Text('Remove your current profile photo?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Remove', style: TextStyle(color: Colors.red)),
+              ),
+            ],
+          );
+        },
+      );
+      if (removeConfirmed == true) {
+        setState(() { _avatarUrl = null; _localAvatar = null; });
+      }
       return;
     }
 
@@ -278,8 +367,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       },
     );
 
-    firstCtrl.dispose();
-    lastCtrl.dispose();
+    // firstCtrl.dispose();
+    // lastCtrl.dispose();
   }
 
   // ---------------------------------------------------------------------------
@@ -332,6 +421,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 4),
             Text(
               _email!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: Theme.of(context)
                   .textTheme
                   .bodyMedium
@@ -361,6 +452,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              icon: const Icon(Icons.delete_forever),
+              label: _isDeleting
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Text('Delete Account'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              onPressed: _isDeleting ? null : _deleteAccountData,
             ),
           ),
         ],
@@ -442,23 +557,29 @@ class _InfoCard extends StatelessWidget {
         children: [
           Icon(icon, size: 20, color: Colors.grey.shade600),
           const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: Theme.of(context)
-                    .textTheme
-                    .labelSmall
-                    ?.copyWith(color: Colors.grey),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                (value != null && value!.isNotEmpty) ? value! : '—',
-                style: Theme.of(context).textTheme.bodyMedium
-                    ?.copyWith(fontWeight: FontWeight.w500),
-              ),
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: Theme.of(context)
+                      .textTheme
+                      .labelSmall
+                      ?.copyWith(color: Colors.grey),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  (value != null && value!.isNotEmpty) ? value! : '—',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyMedium
+                      ?.copyWith(fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
           ),
         ],
       ),

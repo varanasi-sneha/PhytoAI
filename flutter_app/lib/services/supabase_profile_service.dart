@@ -14,9 +14,8 @@ class SupabaseProfileService {
   final LocalProfileService _local;
   final NetworkService _network;
 
-  static const _table = 'profiles';
-  static const _bucket = 'profile-photos';
-  static const _cacheKey = 'supabase_profile';
+  static const _table = 'users';
+  static const _bucket = 'profile_pics';
 
   SupabaseProfileService({required CacheService cache})
       : _cache = cache,
@@ -28,6 +27,8 @@ class SupabaseProfileService {
 
   String get _userId => _auth.currentUser!.id;
 
+  String _cacheKeyFor(String uid) => 'supabase_profile:$uid';
+
   // ---------------------------------------------------------------------------
   // Fetch profile
   // Returns Map with keys: email, first_name, last_name, avatar_url.
@@ -38,8 +39,11 @@ class SupabaseProfileService {
   Future<Map<String, dynamic>> getProfile() async {
     try {
       await _network.ensureConnected();
+      final user = _auth.currentUser;
+      if (user == null) return _localProfileAsMap();
 
-      final cached = _cache.get(_cacheKey);
+      final cacheKey = _cacheKeyFor(user.id);
+      final cached = _cache.get(cacheKey);
       if (cached is Map) {
         return Map<String, dynamic>.from(cached);
       }
@@ -47,16 +51,32 @@ class SupabaseProfileService {
       final rows = await _client
           .from(_table)
           .select('email, first_name, last_name, avatar_url')
-          .eq('user_id', _userId)
+          .eq('id', user.id)
           .limit(1);
 
       if (rows == null || (rows as List).isEmpty) {
-        // No remote row yet — fall back to local so the screen isn't empty.
+        // No remote row yet — attempt to create one from Auth metadata so
+        // newly created users immediately see profile data in the app.
+        try {
+          final meta = user.userMetadata;
+          final first = (meta?['first_name'] as String?) ?? (meta?['given_name'] as String?) ?? '';
+          final last = (meta?['last_name'] as String?) ?? (meta?['family_name'] as String?) ?? '';
+          await _client.from(_table).upsert({
+            'id': user.id,
+            'email': user.email,
+            'first_name': first,
+            'last_name': last,
+            'created_at': DateTime.now().toUtc().toIso8601String(),
+          }, onConflict: 'id');
+        } catch (_) {
+          // best-effort upsert failed; continue using local fallback.
+        }
+
         return _localProfileAsMap();
       }
 
       final profile = Map<String, dynamic>.from(rows.first as Map);
-      await _cache.set(_cacheKey, profile, ttl: const Duration(minutes: 10));
+      await _cache.set(cacheKey, profile, ttl: const Duration(minutes: 10));
       return profile;
     } catch (_) {
       // Offline — use local data.
@@ -86,20 +106,23 @@ class SupabaseProfileService {
 
     try {
       await _network.ensureConnected();
+
+      final user = _auth.currentUser;
+      if (user == null) return;
+
       await _client.from(_table).upsert(
         {
-          'user_id': _userId,
-          'email': _auth.currentUser?.email,
+          'id': user.id,
+          'name': '$firstName $lastName'.trim(),
+          'email': user.email,
           'first_name': firstName,
           'last_name': lastName,
-          'updated_at': DateTime.now().toUtc().toIso8601String(),
         },
-        onConflict: 'user_id',
+        onConflict: 'id',
       );
-      await _cache.remove(_cacheKey);
-    } catch (_) {
-      // Offline — local write already done.
-    }
+
+      await _cache.remove(_cacheKeyFor(user.id));
+    } catch (e, st) {}
   }
 
   // ---------------------------------------------------------------------------
@@ -126,24 +149,43 @@ class SupabaseProfileService {
       final publicUrl = _client.storage.from(_bucket).getPublicUrl(path);
 
       await _client.from(_table).upsert(
-        {
-          'user_id': _userId,
-          'email': _auth.currentUser?.email,
-          'avatar_url': publicUrl,
-          'updated_at': DateTime.now().toUtc().toIso8601String(),
-        },
-        onConflict: 'user_id',
+      {
+        'id': _userId,
+        'email': _auth.currentUser?.email,
+        'avatar_url': publicUrl,
+      },
+        onConflict: 'id',
       );
 
-      await _cache.remove(_cacheKey);
+      final user = _auth.currentUser;
+      if (user != null) await _cache.remove(_cacheKeyFor(user.id));
       return publicUrl;
-    } catch (_) {
-      return null; // Offline — caller uses the local file.
+    } catch (e, st) {
+      print('PROFILE IMAGE ERROR: $e');
+      print(st);
+      return null;
     }
   }
 
   Future<String?> getProfileImageUrl() async {
     final profile = await getProfile();
     return profile['avatar_url'] as String?;
+  }
+
+  Future<void> deleteAccountData() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    final cacheKey = _cacheKeyFor(user.id);
+    await _local.clearProfile();
+    await _cache.remove(cacheKey);
+
+    try {
+      await _network.ensureConnected();
+      await _client.from(_table).delete().eq('id', user.id);
+      await _client.storage.from(_bucket).remove(['${user.id}/profile.png']);
+    } catch (_) {
+      // best effort remote cleanup; local cleanup is already handled.
+    }
   }
 }

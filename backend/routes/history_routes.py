@@ -27,5 +27,10 @@ def update_profile(current_user):
         "first_name": data.get("first_name"),
         "last_name": data.get("last_name")
     }).eq("id", current_user.id).execute()
+    # Also update profiles table for client consistency
+    supabase.table("profiles").update({
+        "first_name": data.get("first_name"),
+        "last_name": data.get("last_name")
+    }).eq("user_id", current_user.id).execute()
 
     return jsonify({"message": "updated"})

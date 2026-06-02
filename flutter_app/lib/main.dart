@@ -10,6 +10,7 @@ import 'services/compound_classification_service.dart';
 import 'services/local_inference_service.dart';
 import 'services/network_service.dart';
 import 'services/local_profile_service.dart';
+import 'services/supabase_history_service.dart';
 import 'services/local_history_service.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/signup_screen.dart';
@@ -60,8 +61,15 @@ void main() async {
           create: (context) => LocalProfileService(cache: cacheService, auth: context.read<AuthService>()),
         ),
 
-        Provider<LocalHistoryService>(
+        ChangeNotifierProvider<LocalHistoryService>(
           create: (context) => LocalHistoryService(cache: cacheService),
+        ),
+
+        Provider<SupabaseHistoryService>(
+          create: (context) => SupabaseHistoryService(
+            cache: context.read<CacheService>(),
+            localHistoryService: context.read<LocalHistoryService>(),
+          ),
         ),
 
         Provider<ApiService>(

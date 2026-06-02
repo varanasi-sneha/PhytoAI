@@ -8,19 +8,22 @@ import 'cache_service.dart';
 class LocalProfileService {
   final CacheService _cache;
   final AuthService _auth;
-  static const String _key = 'profile';
+  static const String _keyPrefix = 'local_profile';
 
   LocalProfileService({required CacheService cache, required AuthService auth})
       : _cache = cache,
         _auth = auth;
 
+  String _cacheKey(String userId) => '$_keyPrefix:$userId';
+
   Future<Map<String, dynamic>> getProfile() async {
-    final cached = _cache.get(_key);
+    final user = _auth.currentUser;
+    final key = _cacheKey(user?.id ?? 'anon');
+    final cached = _cache.get(key);
     if (cached is Map<String, dynamic>) {
       return Map<String, dynamic>.from(cached);
     }
 
-    final user = _auth.currentUser;
     final profile = {
       'email': user?.email ?? '',
       'first_name': null,
@@ -28,12 +31,14 @@ class LocalProfileService {
       'profile_image_path': null,
     };
 
-    await _cacheProfile(profile);
+    await _cache.set(key, profile, ttl: const Duration(days: 3650));
     return profile;
   }
 
   Future<void> _cacheProfile(Map<String, dynamic> profile) async {
-    await _cache.set(_key, profile, ttl: const Duration(days: 3650));
+    final user = _auth.currentUser;
+    final key = _cacheKey(user?.id ?? 'anon');
+    await _cache.set(key, profile, ttl: const Duration(days: 3650));
   }
 
   Future<void> updateProfile(String firstName, String lastName) async {
@@ -70,6 +75,20 @@ class LocalProfileService {
   }
 
   Future<void> clear() async {
-    await _cache.remove(_key);
+    final user = _auth.currentUser;
+    final key = _cacheKey(user?.id ?? 'anon');
+    await _cache.remove(key);
+  }
+
+  Future<void> clearProfile() async {
+    final file = await getProfileImageFile();
+    if (file != null && await file.exists()) {
+      try {
+        await file.delete();
+      } catch (_) {
+        // Ignore deletion failures for local cleanup.
+      }
+    }
+    await clear();
   }
 }
