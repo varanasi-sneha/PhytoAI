@@ -131,9 +131,13 @@ class OnnxRuntimeService {
   Future<double> _estimateBlur(File imageFile) async {
     final bytes = await imageFile.readAsBytes();
     final image = img.decodeImage(bytes);
+    final small = img.copyResize(
+      image!,
+      width: 512,
+    );
     if (image == null) return 0.0;
 
-    final gray = img.grayscale(image);
+    final gray = img.grayscale(small);
     final w    = gray.width;
     final h    = gray.height;
 

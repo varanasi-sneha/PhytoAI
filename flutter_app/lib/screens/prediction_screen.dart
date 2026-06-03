@@ -63,8 +63,12 @@ class _PredictionScreenState extends State<PredictionScreen> {
         }
       }
 
-      final XFile? picked =
-          await _picker.pickImage(source: source, imageQuality: 85);
+      final XFile? picked = await _picker.pickImage(
+        source: source,
+        imageQuality: 85,
+        maxWidth: 1024,
+        maxHeight: 1024,
+      );
 
       if (picked != null) {
         setState(() {

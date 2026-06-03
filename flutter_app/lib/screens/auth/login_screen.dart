@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../auth_service.dart';
 import '../../app_state.dart';
@@ -49,9 +50,14 @@ class _LoginScreenState extends State<LoginScreen> {
           _errorMessage = 'Login failed. Please check your credentials.';
         });
       }
-    } catch (e) {
+    } on AuthException catch (e) {
       setState(() {
-        _errorMessage = 'Something went wrong. Please try again.';
+          _errorMessage = e.message;
+      });
+    }
+    catch (e) {
+      setState(() {
+          _errorMessage = 'Something went wrong. Please try again.';
       });
     } finally {
       setState(() {

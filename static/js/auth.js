@@ -172,22 +172,35 @@ document.addEventListener("DOMContentLoaded", async () => {
       signupBtn.disabled = true;
       signupBtn.innerText = "Creating account...";
 
+      const parts = name.split(' ');
+      const firstName = parts[0] || '';
+      const lastName = parts.slice(1).join(' ') || '';
+
       try {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            data: { full_name: name }
+            data: {
+              full_name: name,
+              first_name: firstName,
+              last_name: lastName
+            }
           }
         });
 
         if (error) {
           alert(error.message || "Signup failed.");
-        } else if (data.user && data.user.identities && data.user.identities.length === 0) {
-          // Supabase returns a fake user object if email already exists
-          alert("An account with this email already exists. Please login.");
-          signupForm.style.display = "none";
-          loginForm.style.display = "block";
+        } else if (data.user) {
+            await supabase.from("users").upsert({
+                id: data.user.id,
+                name: name,
+                email: email,
+                first_name: firstName,
+                last_name: lastName,
+            }, {
+                onConflict: "id"
+            });
         } else {
           // Check if email confirmation is required
           if (!data.session) {

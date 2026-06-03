@@ -25,7 +25,7 @@ async function deletePhoto() {
     const { data: { session } } = await supabaseClient.auth.getSession();
     if (!session) return;
     if (!confirm("Delete your profile photo?")) return;
-    const path = `${session.user.id}.jpg`;
+    const path = `${session.user.id}/profile.jpg`;
     const { error } = await supabaseClient
         .storage
         .from("profile_pics")
@@ -76,10 +76,19 @@ async function loadProfile() {
     }
 
     // -------- NAME --------
-    let name =
-        session.user.user_metadata?.name ||
-        session.user.user_metadata?.full_name ||
-        "User";
+    const { data: profile } = await supabaseClient
+        .from("users")
+        .select("name, first_name, last_name")
+        .eq("id", session.user.id)
+        .single();
+    let name = profile?.name;
+
+    if (!name) {
+        name =
+            session.user.user_metadata?.name ||
+            session.user.user_metadata?.full_name ||
+            "User";
+    }
     if (!name || name.trim() === "") {
         name = session.user.email.split("@")[0];
     }
@@ -93,7 +102,7 @@ async function loadProfile() {
     fallback.innerText = initials;
 
     // -------- IMAGE LOAD --------
-    const path = `${session.user.id}.jpg`;
+    const path = `${session.user.id}/profile.jpg`;
     const { data } = supabaseClient.storage.from("profile_pics").getPublicUrl(path);
 
     img.style.display = "none";
@@ -245,9 +254,53 @@ window.toggleThemeAndLog = function() {
 // ---------- UPDATE NAME ----------
 async function updateName() {
     const name = document.getElementById("nameInput").value.trim();
-    if (!name) return alert("Please enter a name");
-    const { error } = await supabaseClient.auth.updateUser({ data: { name: name } });
-    if (error) { alert("Update failed: " + error.message); return; }
+
+    if (!name) {
+        alert("Please enter a name");
+        return;
+    }
+
+    const parts = name.split(" ");
+    const firstName = parts[0] || "";
+    const lastName = parts.slice(1).join(" ");
+
+    const {
+        data: { session }
+    } = await supabaseClient.auth.getSession();
+
+    if (!session) {
+        alert("Please login again.");
+        return;
+    }
+
+    // Update auth metadata
+    await supabaseClient.auth.updateUser({
+        data: {
+            name,
+            full_name: name,
+            first_name: firstName,
+            last_name: lastName
+        }
+    });
+
+    // Update users table
+    const { error } = await supabaseClient
+        .from("users")
+        .upsert({
+            id: session.user.id,
+            name,
+            email: session.user.email,
+            first_name: firstName,
+            last_name: lastName
+        }, {
+            onConflict: "id"
+        });
+
+    if (error) {
+        alert("Update failed: " + error.message);
+        return;
+    }
+
     alert("✓ Name updated successfully!");
     loadProfile();
 }
@@ -341,7 +394,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!file) return;
         if (!["image/jpeg", "image/jpg"].includes(file.type)) { alert("Only JPG/JPEG allowed"); return; }
         const { data: { session } } = await supabaseClient.auth.getSession();
-        const path = `${session.user.id}.jpg`;
+        const path = `${session.user.id}/profile.jpg`;
         const { error } = await supabaseClient.storage.from("profile_pics").upload(path, file, { upsert: true });
         if (error) { alert("Upload failed: " + error.message); return; }
         alert("✓ Photo uploaded successfully!");
